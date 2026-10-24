@@ -35,6 +35,29 @@ agents/.venv/Scripts/python -m agents.parksight_agent
 agent inspector`. Open the printed inspector link, click **Connect → Mailbox**, then use **Chat with Agent** from the
 Agentverse profile to reach ASI:One. The ParkSight Agent has already published its `AgentChatProtocol` manifest.
 
+## First setup on a new teammate's computer
+
+Before starting the public agent, run the offline readiness check from the repository root:
+
+```powershell
+agents/.venv/Scripts/python -m agents.preflight
+```
+
+It reports missing packages and settings without making network requests or printing their values.
+A failed check means setup is incomplete, not that a sponsor integration has been tested.
+
+- Ask Andrew for the cloud `CONVEX_SITE_URL` (HTTPS, ending in `.convex.site`).
+- Receive the matching `AGENT_SECRET` privately and store it only in gitignored `agents/.env`.
+  Do not paste secrets into chat, screenshots, commits, or issue/PR text.
+- Agree who hosts the demo agent before choosing `AGENT_SEED`. A different seed creates a different
+  address from Nathan's development address above; two hosts must not run the same identity concurrently.
+- Keep the same seed for subsequent runs. Do not regenerate it during routine setup.
+- Connect the running agent to your Agentverse mailbox using the inspector link, then test through ASI:One.
+
+The readiness check does not call `/agent/find`. A real parking request can call the team's configured
+Claude model and create an application-level spot hold. Coordinate with the backend owner before live tests.
+Local package installation and the offline check do not require a paid model API key.
+
 ## Rules Agent and the in-process fallback
 
 The ParkSight Agent contacts the Rules Agent over uAgent messaging (`send_and_receive`, 10 s timeout) when
@@ -54,7 +77,7 @@ plain local endpoint (same-machine setups).
 ## Tests
 
 ```bash
-agents/.venv/Scripts/python -m unittest discover -s agents/tests -t .                  # 26 tests
+agents/.venv/Scripts/python -m unittest discover -s agents/tests -t .                  # 31 tests
 python -m unittest discover -s agents/providers/extract/tests -t .                     # 18 tests (from Vortex)
 python -m unittest discover -s agents/providers/retrieval/tests -t .                   # 17 tests (from Vortex)
 ```
