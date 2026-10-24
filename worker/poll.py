@@ -133,7 +133,14 @@ class Worker:
 
     def run(self):
         while True:
-            cams = self.cameras()
+            try:
+                cams = self.cameras()
+            except requests.RequestException as e:  # backend restarting / offline: keep the worker alive
+                print(f"[worker] can't reach Convex ({type(e).__name__}); retrying")
+                if self.args.once:
+                    raise
+                time.sleep(5)
+                continue
             if self.args.only:
                 cams = [c for c in cams if c["camId"] in self.args.only]
             cycle_start = time.time()

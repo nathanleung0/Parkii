@@ -9,3 +9,7 @@ worker/*.pt
 __pycache__
 .convex
 worker/debug_*.jpg
+agents/.venv
+agents/.env
+agents/.uagents
+*.pyc

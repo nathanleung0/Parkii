@@ -1,3 +1,16 @@
+# Merge status (update as work lands)
+
+| Item | State |
+|---|---|
+| 0. Cloud Convex deployment | **Not done**: needs `npx convex login` by a team member. Until then the backend is local, so camera-frame links in agent replies are not reachable from ASI:One. |
+| 1. `POST /agent/find` in Convex | Done and tested (401 / 400 / held spot + frame URL). |
+| 2. ParkSight Agent (Agent Chat Protocol) | Built; chat handler tested end to end against the live backend; boots and publishes its manifest. **Not yet tried inside ASI:One** (needs the Agentverse mailbox step). Interactive Cards and Payment Protocol not built. |
+| 3. Cartesia speech-to-text in the web app | Built (`transcribe` action + MediaRecorder UI). Error path tested; **not tested with a real key or a real microphone**. |
+| 4. Rules Agent | Built. DataSF street cleaning verified live. Apify + Elastic path built and unit-tested with fake transports only; not run against real services. uAgent-to-uAgent delivery not verified (fallback runs in-process). |
+| 5. Calibration, demo recording, submission | Not started (Cams 2 and 5 still need calibrating; README badges and Devpost opt-ins pending). |
+
+---
+
 # Merge plan: ParkSight absorbs the useful parts of Vortex
 
 ## Context

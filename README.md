@@ -18,9 +18,11 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
    - Why footprints: on an oblique camera, cars driving in the next lane overlap the curb stalls in image space. Tuned on Cam 1, parked cars score 0.6–0.8 and passing traffic scores 0–0.1. Whole-box overlap scored passing traffic at 0.24–0.38, causing false "taken" readings.
 4. **Real-time state:** Convex pushes stall changes to every open client. `findSpot` picks the nearest fresh, open stall that isn't held by another driver, and holds it for 3 minutes, all in one transaction. So two drivers never get sent to the same spot.
 5. **Voice:** `convex/assistant.ts`
-   - `ask`: Claude (`claude-opus-5-5`, structured output) reads the driver's request, e.g. "near the theater", and the live candidate list. It picks a stall and writes a one-sentence reply that mentions how fresh the data is. Without `ANTHROPIC_API_KEY` it falls back to the nearest spot.
-   - `speak`: Cartesia `sonic-3.6` reads the reply aloud. Without `CARTESIA_API_KEY` the browser's built-in voice is used.
+   - `transcribe`: the browser records with `MediaRecorder` and Cartesia `ink-whisper` turns it into text (ported from Vortex's `CartesiaVoice`: same endpoint, size/format checks, no provider error text echoed to the user).
+   - `ask`: Claude (`claude-opus-5-5`, structured output) reads the request, e.g. "near the theater", and the live candidate list. It picks a stall and writes a one-sentence reply that mentions how fresh the data is. Without `ANTHROPIC_API_KEY` it falls back to the nearest spot.
+   - `speak`: Cartesia `sonic-3.6` reads the reply aloud. Without `CARTESIA_API_KEY` the browser's built-in voice is used and typed input still works.
 6. **Calibrate view** (`#/calibrate`): click 4 corners on a live frame to draw a stall, then click the map to place it. Changes apply immediately; there's no worker restart.
+7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **ParkSight Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat via Convex `POST /agent/find` (same Claude spot-picker and 3-minute holds as the web app). It asks the **Rules Agent** for street cleaning (DataSF) and SFMTA rules text (Apify + Elastic, adapters copied from Vortex). See [agents/README.md](agents/README.md) for setup and exactly what is verified.
 
 ## Run it
 
@@ -30,6 +32,7 @@ Prereqs: Node 20+, Python 3.11+.
 npm install
 npx convex dev                     # terminal 1 (local backend; or `npx convex login` for cloud)
 npx convex env set INGEST_SECRET <same value as INGEST_SECRET in .env.local>
+npx convex env set AGENT_SECRET <any random string; same value goes in agents/.env>
 npx convex run seed:castro         # once: cameras + starter stalls
 
 python -m venv worker/.venv
@@ -57,11 +60,13 @@ Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), 
 | `worker/poll.py` | Main loop: frame, then YOLO, then POST `/ingest`; debug, record and replay |
 | `worker/sources.py` | YouTube Live HLS reader threads + thumbnail fallback |
 | `convex/schema.ts` | `cameras`, `stalls`, `holds` |
-| `convex/http.ts` | `POST /ingest` (worker → Convex), `GET /cameras` (worker reads its camera list) |
+| `convex/http.ts` | `POST /ingest` (worker → Convex), `GET /cameras` (worker reads its camera list), `POST /agent/find` (Fetch.ai agent → Convex) |
 | `convex/ingest.ts` | Footprint-in-stall occupancy + smoothing |
 | `convex/parking.ts` | Queries, `findSpot` / holds, calibration mutations |
-| `convex/assistant.ts` | Claude spot-picker + Cartesia TTS |
+| `convex/assistant.ts` | Claude spot-picker, Cartesia speech-to-text and text-to-speech |
 | `convex/seed.ts` | Castro cameras + starter stall polygons |
+| `agents/` | Fetch.ai uAgents (ParkSight Agent, Rules Agent), street-cleaning lookup, Vortex provider adapters in `agents/providers/` |
+| `docs/MERGE_PLAN.md` | How ParkSight and Vortex are merged, and what's done |
 | `src/` | React app: `DriverView`, `Calibrate`, `CameraFrame` (SVG overlay), `VoiceAsk` |
 
 ## Known limitations (be upfront with judges)
@@ -77,4 +82,4 @@ Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), 
 - **Turnover prediction:** log stall status history and predict "likely to open in N minutes". Pairs well with Claude's spot choice.
 - **Planet-First metric:** estimate circling time and CO₂ avoided per routed driver (needs a sourced baseline for search time in SF).
 - **Rules layer:** SFMTA meter and parking-regulation open data, to label stalls metered, time-limited or tow-away.
-- **Sponsor fit:** Convex (core real-time state), Anthropic (Claude spot-picker, honest about data freshness), Cartesia (hands-free voice), Most Technically Complex.
+- **Sponsor fit:** Convex (core real-time state), Anthropic (Claude spot-picker, honest about data freshness), Cartesia (speech-to-text and text-to-speech), Fetch.ai (ASI:One agent), Apify and Elastic (rules search, once verified live), Most Technically Complex.

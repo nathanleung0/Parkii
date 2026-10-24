@@ -119,6 +119,16 @@ export const candidates = internalQuery({
   handler: (ctx, { lat, lng, sessionId }) => openCandidates(ctx, lat, lng, sessionId),
 });
 
+// Latest camera frame for a stall (public URL), used in agent replies.
+export const stallFrameUrl = internalQuery({
+  args: { stallId: v.id("stalls") },
+  handler: async (ctx, { stallId }) => {
+    const stall = await ctx.db.get(stallId);
+    const cam = stall && (await ctx.db.get(stall.cameraId));
+    return cam?.lastFrame ? await ctx.storage.getUrl(cam.lastFrame) : null;
+  },
+});
+
 export const holdStall = internalMutation({
   args: { stallId: v.id("stalls"), lat: v.number(), lng: v.number(), sessionId: v.string() },
   handler: async (ctx, { stallId, lat, lng, sessionId }) => {
