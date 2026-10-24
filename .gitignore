@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+worker/.venv
+worker/debug
+worker/recordings
+worker/*.pt
+__pycache__
+.convex
+worker/debug_*.jpg
