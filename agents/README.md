@@ -1,5 +1,8 @@
 # ParkSight agents (Fetch.ai)
 
+For an initial ASI:One check without parking requests, see [connection-only chat testing](CHAT_TESTING.md).
+For actual nearest-spot selection without a language model, see [nearest-spot mode](NEAREST_MODE.md).
+
 Two uAgents that make ParkSight usable from **ASI:One chat** with no custom frontend.
 
 | Agent | File | What it does |
@@ -54,7 +57,7 @@ plain local endpoint (same-machine setups).
 ## Tests
 
 ```bash
-agents/.venv/Scripts/python -m unittest discover -s agents/tests -t .                  # 26 tests
+agents/.venv/Scripts/python -m unittest discover -s agents/tests -t .                  # offline agent tests
 python -m unittest discover -s agents/providers/extract/tests -t .                     # 18 tests (from Vortex)
 python -m unittest discover -s agents/providers/retrieval/tests -t .                   # 17 tests (from Vortex)
 ```
@@ -64,11 +67,18 @@ python -m unittest discover -s agents/providers/retrieval/tests -t .            
 Verified here:
 - Chat handler end to end against the live local backend: geocode, held spot, real DataSF street-cleaning text, camera frame link, directions, acknowledgement plus end-session.
 - Both agents boot; the ParkSight Agent publishes its `AgentChatProtocol` manifest.
+- On Nova's demo host, an ASI:One message reached the local agent and returned the explicit
+  connection-only reply without requesting parking. A subsequent @mention-prefixed help
+  message returned the capability reply inside the same ASI:One conversation.
+- Nearest-spot mode completed a real ASI:One parking request with C5-1, an application hold, DataSF
+  street-cleaning text, working camera thumbnail, live-camera link and directions. No LLM was called.
 - Convex `/agent/find`: 401 without secret, 400 on a bad body, two sessions get two different spots.
 
 Not verified:
-- **Chat inside ASI:One itself**: needs the Agentverse mailbox step above.
+- **Language-model-backed parking workflow inside ASI:One**: nearest-spot mode is verified live;
+  the Claude path is unverified pending confirmation of the team's backend credits.
 - **uAgent-to-uAgent delivery** (ParkSight Agent to Rules Agent): the local test timed out because Agentverse's registration API was timing out from this machine; the in-process fallback covers it.
 - **Apify crawl and Elastic search against real services**: adapters pass fake-transport unit tests only (inherited from Vortex).
-- **Camera frame links in replies** point at the local backend (`127.0.0.1`) until Convex is deployed to a cloud deployment.
+- **Persistent detection-snapshot links**: ingest deletes old stored frames. Nearest mode uses verified
+  public camera thumbnails (labeled as potentially lagging) and live-camera links instead.
 - Interactive Cards and the Payment Protocol (Fetch bonuses) are not built.
