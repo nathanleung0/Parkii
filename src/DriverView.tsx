@@ -146,7 +146,7 @@ export function DriverView() {
 
       <aside className="panel driver-panel">
         <div className="search-section">
-          <p className="eyebrow">PARKSIGHT · SAN FRANCISCO</p>
+          <p className="eyebrow">PARKII · SAN FRANCISCO</p>
           <h1>Where do you want to park?</h1>
           <p className="section-intro">Choose a point on the map. We’ll check the spaces nearby cameras can actually see.</p>
 
@@ -173,7 +173,7 @@ export function DriverView() {
             </div>
           </div>
 
-          <div className="voice-heading"><span>Or ask ParkSight</span></div>
+          <div className="voice-heading"><span>Or ask Parkii</span></div>
           <VoiceAsk
             lat={you[0]}
             lng={you[1]}
@@ -214,7 +214,7 @@ export function DriverView() {
               <span className="field-label">NEAREST OBSERVED SPACE</span>
               <div className="result-title"><strong>{spot.label}</strong><span>{spot.distanceM} m away</span></div>
               <p className="result-source">{spot.camera} · processed {spot.ageS}s ago · {Math.round(spot.confidence * 100)}% detection agreement</p>
-              <div className="hold"><strong>ParkSight hold · {Math.floor(holdLeft / 60)}:{String(holdLeft % 60).padStart(2, "0")}</strong><span>Other ParkSight users won’t be sent here. The street space can still be taken.</span></div>
+              <div className="hold"><strong>Parkii hold · {Math.floor(holdLeft / 60)}:{String(holdLeft % 60).padStart(2, "0")}</strong><span>Other Parkii users won’t be sent here. The street space can still be taken.</span></div>
               <div className="result-actions">
                 <a
                   className={navPulse ? "primary link nav-pulse" : "primary link"}
@@ -264,7 +264,7 @@ export function DriverView() {
           <section className="camera-empty"><p className="eyebrow">NEARBY CAMERAS</p><h2>No view at this point</h2><p>Move the destination pin toward a monitored street to see camera observations.</p></section>
         )}
         <p className="fineprint">
-          Camera feeds can lag behind real traffic. A ParkSight hold does not reserve a public street space.
+          Camera feeds can lag behind real traffic. A Parkii hold does not reserve a public street space.
         </p>
       </aside>
     </main>

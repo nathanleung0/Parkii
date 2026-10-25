@@ -19,8 +19,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <a href="#/" className="brand">
-          <span className="logo">P</span>
-          <span>ParkSight</span>
+          <span>Parkii</span>
         </a>
         <span className="tagline">Camera-observed street parking</span>
         <nav aria-label="Main navigation">

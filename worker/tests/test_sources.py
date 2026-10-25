@@ -18,7 +18,7 @@ def load_sources():
     requests = ModuleType("requests")
     with patch.dict(sys.modules, {"cv2": cv2, "numpy": numpy, "requests": requests}):
         path = Path(__file__).resolve().parents[1] / "sources.py"
-        spec = importlib.util.spec_from_file_location("parksight_sources_test", path)
+        spec = importlib.util.spec_from_file_location("parkii_sources_test", path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
     return module

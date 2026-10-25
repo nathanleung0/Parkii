@@ -1,6 +1,6 @@
 # Expanding camera coverage
 
-ParkSight reports camera-observed curb stalls within 600 m of a search point. A camera without calibrated legal stalls does not count as coverage. Searches outside the observed area return no coverage instead of routing a driver to Castro.
+Parkii reports camera-observed curb stalls within 600 m of a search point. A camera without calibrated legal stalls does not count as coverage. Searches outside the observed area return no coverage instead of routing a driver to Castro.
 
 ## Add a feed
 

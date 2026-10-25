@@ -1,9 +1,9 @@
 ![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
 ![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
 
-# ParkSight
+# Parkii
 
-**Camera-observed street-parking availability.** ParkSight processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps ParkSight from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
+**Camera-observed street-parking availability.** Parkii processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps Parkii from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
 
 Proof of concept: **Castro Street, San Francisco**, using the public [Castro Street Cams](https://sfbaytimes.com/castro-street-cam/) (SF Bay Times, YouTube Live).
 
@@ -19,23 +19,23 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
 2. **Detection:** `worker/poll.py` runs YOLO11s (cars, trucks, buses, motorcycles) on each frame on a configurable cycle. It POSTs vehicle boxes to Convex `/ingest`; a downscaled preview JPEG is uploaded once per minute by default.
 3. **Occupancy (in Convex):** `convex/ingest.ts` takes each vehicle's **ground footprint** (bottom 35% of its box) and checks how much falls inside each stall polygon (≥ 40% means occupied). Majority vote over the last 3 readings gives the status and a vote-agreement score, which is not a calibrated probability of availability.
    - Why footprints: on an oblique camera, cars driving in the next lane overlap the curb stalls in image space. Tuned on Cam 1, parked cars score 0.6–0.8 and passing traffic scores 0–0.1. Whole-box overlap scored passing traffic at 0.24–0.38, causing false "taken" readings.
-4. **Real-time state:** Convex pushes stall changes to nearby clients. `findSpot` considers camera-observed stalls within 600 m of the selected location and picks the nearest fresh, open stall that isn't held by another ParkSight user. A search outside camera coverage reports that no live data is available there.
+4. **Real-time state:** Convex pushes stall changes to nearby clients. `findSpot` considers camera-observed stalls within 600 m of the selected location and picks the nearest fresh, open stall that isn't held by another Parkii user. A search outside camera coverage reports that no live data is available there.
 5. **Voice:** `convex/assistant.ts`
    - `transcribe`: the browser records with `MediaRecorder` and Cartesia `ink-whisper` turns it into text (ported from Vortex's `CartesiaVoice`: same endpoint, size/format checks, no provider error text echoed to the user).
    - `ask`: Claude (`claude-opus-5-5`, structured output) reads the request, e.g. "near the theater", and the live candidate list. It picks a stall and writes a one-sentence reply that mentions how fresh the data is. Without `ANTHROPIC_API_KEY` it falls back to the nearest spot.
    - `speak`: Cartesia `sonic-3.6` reads the reply aloud. Without `CARTESIA_API_KEY` the browser's built-in voice is used and typed input still works.
-   - **Voice agent** (`convex/agent.ts`, what the web app's mic and Ask button use now): Claude runs a tool loop instead of making one pick. It can `look_at_camera` (the camera's latest frame is sent to Claude as an image, so it checks the curb itself), `list_open_spots`, `hold_spot` / `release_spot`, and drive the app with `show_camera`, `set_my_location` (a fixed list of Castro landmarks) and `start_navigation`. One request like "find parking near the Castro Theatre and give me directions" runs several of these tools, and the panel lists each step it took. It only acts through these ParkSight tools; it can't click or type on the page. Without `ANTHROPIC_API_KEY` it falls back to the nearest-spot pick above.
+   - **Voice agent** (`convex/agent.ts`, what the web app's mic and Ask button use now): Claude runs a tool loop instead of making one pick. It can `look_at_camera` (the camera's latest frame is sent to Claude as an image, so it checks the curb itself), `list_open_spots`, `hold_spot` / `release_spot`, and drive the app with `show_camera`, `set_my_location` (a fixed list of Castro landmarks) and `start_navigation`. One request like "find parking near the Castro Theatre and give me directions" runs several of these tools, and the panel lists each step it took. It only acts through these Parkii tools; it can't click or type on the page. Without `ANTHROPIC_API_KEY` it falls back to the nearest-spot pick above.
    - **Streaming voice** (`src/cartesiaStream.ts`): the browser gets a 5-minute Cartesia access token from `assistant.voiceToken` (the API key stays on Convex). It streams `sonic-3.6` over WebSocket and plays each PCM chunk as it arrives. It says "On it." right away while the agent works. Fallbacks: the WAV from `speak`, then the browser voice.
 6. **Calibrate view** (`#/calibrate`): click 4 corners on a live frame to draw a stall, then click the map to place it. Changes apply immediately; there's no worker restart.
-7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **ParkSight Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat. The live `nearest` mode calls the shared Convex selection/hold mutation without an LLM; `assistant` mode uses `POST /agent/find`. Rules run in-process on the current demo host; optional remote Rules-Agent messaging, Apify and Elastic are separately configured and not claimed as verified live. See [agents/README.md](agents/README.md) for setup and exactly what is verified.
+7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **Parkii Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat. The live `nearest` mode calls the shared Convex selection/hold mutation without an LLM; `assistant` mode uses `POST /agent/find`. Rules run in-process on the current demo host; optional remote Rules-Agent messaging, Apify and Elastic are separately configured and not claimed as verified live. See [agents/README.md](agents/README.md) for setup and exactly what is verified.
 
 ## Live ASI:One demo agent
 
-Nova hosts `parksight-agent` at `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`.
+Nova hosts `parkii-agent` at `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`.
 Ask `find me parking near the Castro Theatre` in ASI:One. The verified nearest
 mode reuses Convex selection/holds and DataSF rules without an LLM call.
 See [demo evidence and restart instructions](agents/DEMO_RUNBOOK.md) and
-[agent setup](agents/README.md). A [3:40 silent, captioned demo draft](docs/demo/parksight-asi-one.mp4) is available for review; it is not a submitted pitch. Availability depends on current calibrated camera
+[agent setup](agents/README.md). A [3:40 silent, captioned demo draft](docs/demo/parksight-asi-one.mp4) is available for review. It was recorded under the former ParkSight name and is not a submitted pitch. Availability depends on current calibrated camera
 readings; a no-availability reply is not proof of a successful held-spot demo.
 
 ## Run it
@@ -82,8 +82,8 @@ To add cameras in other SF neighborhoods, follow [the coverage guide](docs/COVER
 | `convex/parking.ts` | Queries, `findSpot` / holds, calibration mutations |
 | `convex/assistant.ts` | Claude spot-picker, Cartesia speech-to-text and text-to-speech |
 | `convex/seed.ts` | Castro cameras + starter stall polygons |
-| `agents/` | Fetch.ai uAgents (ParkSight Agent, Rules Agent), street-cleaning lookup, Vortex provider adapters in `agents/providers/` |
-| `docs/MERGE_PLAN.md` | How ParkSight and Vortex are merged, and what's done |
+| `agents/` | Fetch.ai uAgents (Parkii Agent, Rules Agent), street-cleaning lookup, Vortex provider adapters in `agents/providers/` |
+| `docs/MERGE_PLAN.md` | How Parkii and Vortex are merged, and what's done |
 | `src/` | React app: `DriverView`, `Calibrate`, `CameraFrame` (SVG overlay), `VoiceAsk` |
 
 ## Known limitations (be upfront with judges)

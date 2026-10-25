@@ -45,17 +45,17 @@ def cloud_site_configured(value: str) -> bool:
 
 def check_settings(env: Mapping[str, str]) -> list[Check]:
     checks = []
-    mode = env.get("PARKSIGHT_PARKING_MODE", "assistant").strip().lower()
+    mode = env.get("PARKII_PARKING_MODE", "assistant").strip().lower()
     if mode not in {"nearest", "assistant"}:
         checks.append(Check("FAIL", "Parking mode", "Choose nearest or assistant."))
     else:
         if mode == "nearest":
             from .nearest_client import _origin
-            from .convex_client import ParkSightError
+            from .convex_client import ParkiiError
             try:
                 _origin(env)
                 cloud_ready = True
-            except ParkSightError:
+            except ParkiiError:
                 cloud_ready = False
         else:
             site = env.get("CONVEX_SITE_URL") or env.get("VITE_CONVEX_SITE_URL", "")

@@ -9,7 +9,7 @@ from . import street_rules
 from .providers.provider_common import ProviderError
 from .providers.retrieval import ElasticRetrieval, SearchScope
 
-DEMO_USER = "parksight-demo"
+DEMO_USER = "parkii-demo"
 WORKSPACE = "castro"
 RULES_QUERY = "parking time limits meters permits street cleaning rules"
 

@@ -1,16 +1,18 @@
-# Nova's live ParkSight ASI:One demo
+# Nova's live Parkii ASI:One demo
 
 ## Identity and host
 
-- Agent: `parksight-agent`
+- Agent: `parkii-agent`
 - Stable public address: `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`
 - Demo backend: `https://mellow-sandpiper-36.convex.site`
 - One running process on Nova's Windows demo host, port 8001.
 - Keep the existing private seed in ignored `agents/.env`; do not regenerate it,
   publish it, or run this identity on two hosts.
 
-The live configuration uses `PARKSIGHT_CHAT_ONLY=0` and
-`PARKSIGHT_PARKING_MODE=nearest`. This reuses shared Convex freshness, selection
+The live configuration uses `PARKII_CHAT_ONLY=0` and
+`PARKII_PARKING_MODE=nearest`. Hosts migrating from ParkSight must explicitly set
+these renamed variables before restarting; legacy `PARKSIGHT_*` variables are
+not read by the renamed modules. This reuses shared Convex freshness, selection
 and application holds without calling Claude. `assistant` remains an explicit
 alternative; do not silently change modes during a demo.
 
@@ -29,27 +31,27 @@ Verified live:
 - The backend `/agent/find` authentication was checked with rejected unauthorized
   and malformed requests. Those checks do not verify its Claude workflow.
 
-- After updating the host to merged main, the 9:50 PM request produced a real
-  C1-2 reply at 9:51 PM: 78 m away, processed 29 seconds earlier, 100% detection
-  agreement, an application hold, DataSF cleaning guidance, Camera feeds and Directions.
-  A separate read-only query confirmed one active application hold on C1-2.
-- The restarted host retained the same public address; current public-camera API
+- The merged agent returned a real C1-2 response at 9:51 PM: 78 m away,
+  processed 29 seconds earlier, 100% detection agreement, an application hold,
+  DataSF cleaning guidance, Camera feeds and Directions. A separate read-only
+  query confirmed one active application hold on C1-2.
+- The host retained the same public address. Current public-camera API link
   compatibility was independently checked without another hold mutation.
 
-## Prepared video draft
+## Prepared video draft (recorded before the Parkii rename)
 
 [3:40 English-captioned ASI:One walkthrough](../docs/demo/parksight-asi-one.mp4)
 
-This is a silent, approximately 1 fps sampled capture of the actual ASI:One tab.
-Gaps retain the last observed image. It shows the earlier genuine 9:51 PM success
-reply and a new real request at 9:55 PM, which returned no availability at 9:56 PM.
-Earlier connection-test history keeps its original timestamps. It is a review
-**draft**, not a continuous recording of a newly successful request and not a
-submitted pitch. Capture provenance is in `docs/demo/recording-provenance.json`.
+This is a silent, approximately 1 fps sampled capture of the actual ASI:One tab
+under the former ParkSight name. Gaps retain the last observation. It shows the
+genuine 9:51 PM success reply and a new 9:55 PM request returning no availability
+at 9:56 PM; older history retains its original timestamps. It is a review draft,
+not a continuous newly successful recording or submitted pitch. Capture provenance
+is in `docs/demo/recording-provenance.json`. The stable seed/address are unchanged.
 
 Still to coordinate with Andrew:
-- Review the draft, record a continuous successful-flow retake if needed, and
-  submit the final video link plus Devpost/ASI submission.
+- Review the draft, retake a continuous successful flow if needed, and submit the
+  final video link plus Devpost/ASI submission.
 - Claude-backed parking inside ASI:One, remote Rules-Agent delivery, Apify or Elastic.
 - Interactive Cards and payments; these are stretch items and no payment was made.
 
@@ -72,7 +74,7 @@ Operator `GET /cameras` requires its own ingest secret; agents use public querie
 2. Open this exact agent, send `help`, then the Castro Theatre parking request.
 3. If a real eligible spot exists, show its label, processed age, agreement,
    application hold, DataSF warning, camera link and directions.
-4. Explain that the hold only coordinates ParkSight users; public curb access
+4. Explain that the hold only coordinates Parkii users; public curb access
    cannot be reserved. Camera lag and calibration can still cause errors.
 5. If no spot exists, show the honest reply. A successful-flow recording needs a
    genuinely available calibrated stall or a visibly labeled replay from Nathan.
@@ -85,7 +87,7 @@ Install `agents/requirements.txt` in a virtual environment and configure ignored
 all configuration values; nearest mode accepts an HTTPS Convex cloud/site origin
 without requiring the assistant-only secret. Keep the existing stable seed.
 
-Stop only the existing ParkSight demo process before restarting. From repo root:
+Stop only the existing Parkii demo process before restarting. From repo root:
 
 ```powershell
 $demoRoot = (Get-Location).Path
@@ -96,7 +98,7 @@ $env:PYTHONPATH = $demoRoot
 $env:PYTHONUNBUFFERED = '1'
 New-Item -ItemType Directory -Force -Path 'agents/.uagents' | Out-Null
 Push-Location 'agents/.uagents'
-try { & $demoPython -m agents.parksight_agent }
+try { & $demoPython -m agents.parkii_agent }
 finally { Pop-Location }
 ```
 

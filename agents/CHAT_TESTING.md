@@ -6,7 +6,7 @@ calling Convex, querying rules, or creating a parking hold. Greetings and **test
 use this local reply. A leading @mention of this agent is removed before routing.
 Normal ASI:One account or plan limits still apply.
 
-For strict connection-only testing, set `PARKSIGHT_CHAT_ONLY=1` in ignored `agents/.env` before
+For strict connection-only testing, set `PARKII_CHAT_ONLY=1` in ignored `agents/.env` before
 starting the agent. This also blocks geocoding, Convex and rules calls for parking messages, with an
 explicit paused-search reply. Set it back to `0` and restart only when ready to test parking.
 The default in `.env.example` is `0`, preserving normal parking behavior.

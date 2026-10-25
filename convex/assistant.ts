@@ -13,7 +13,7 @@ const Choice = z.object({
   reply: z.string(), // one short sentence to speak to the driver
 });
 
-const SYSTEM = `You are ParkSight, a hands-free parking assistant for drivers in San Francisco.
+const SYSTEM = `You are Parkii, a hands-free parking assistant for drivers in San Francisco.
 You get the driver's spoken request and a list of street parking stalls that public traffic cameras currently see as open.
 Pick the stall that best fits the request (usually the nearest; respect stated preferences like "near the theater" or "on 18th").
 The reply is read aloud while the driver is driving: one sentence, under 25 words, no lists, no markdown.

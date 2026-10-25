@@ -22,7 +22,7 @@ def success(value):
 
 class NearestModeTest(unittest.TestCase):
     def setUp(self):
-        self.env = patch.dict(os.environ, {"PARKSIGHT_PARKING_MODE": "nearest",
+        self.env = patch.dict(os.environ, {"PARKII_PARKING_MODE": "nearest",
             "CONVEX_URL": "", "VITE_CONVEX_URL": "", "CONVEX_SITE_URL": "https://demo-123.convex.site",
             "AGENT_SECRET": "private-value-never-forward"})
         self.env.start()
@@ -89,7 +89,7 @@ class NearestModeTest(unittest.TestCase):
         def post(*args):
             self.calls.append(args)
             return 500, b'{"errorMessage":"private-backend-error"}'
-        with self.assertRaises(convex_client.ParkSightError) as error:
+        with self.assertRaises(convex_client.ParkiiError) as error:
             nearest_client.find_nearest(37.762, -122.4348, "s", post=post)
         self.assertNotIn("private-backend-error", str(error.exception))
         self.assertEqual(len(self.calls), 1)
@@ -109,19 +109,19 @@ class NearestModeTest(unittest.TestCase):
             with self.subTest(key=key):
                 bad = spot()
                 bad[key] = value
-                with self.assertRaises(convex_client.ParkSightError):
+                with self.assertRaises(convex_client.ParkiiError):
                     nearest_client.find_nearest(37.762, -122.4348, "s", post=lambda *args: success(bad))
 
     def test_invalid_deployment_never_reaches_the_transport(self):
         for value in ("http://127.0.0.1:3210", "https://demo.convex.site.evil.example", "https://a:b@demo.convex.site",
                       "https://demo.convex.site/path", "https://demo.convex.site:", "https://demo.convex.site\n"):
             with self.subTest(value=value), patch.dict(os.environ, {"CONVEX_SITE_URL": value}):
-                with self.assertRaises(convex_client.ParkSightError):
+                with self.assertRaises(convex_client.ParkiiError):
                     nearest_client.find_nearest(37.762, -122.4348, "s", post=lambda *args: self.fail("unexpected request"))
 
     def test_invalid_location_or_session_never_makes_a_mutation(self):
         for lat, lng, session in ((True, 1, "s"), (91, 1, "s"), (1, float("nan"), "s"), (1, 1, ""), (1, 1, "x"*251)):
-            with self.assertRaises(convex_client.ParkSightError):
+            with self.assertRaises(convex_client.ParkiiError):
                 nearest_client.find_nearest(lat, lng, session, post=lambda *args: self.fail("unexpected request"))
 
     def test_ambiguous_camera_names_or_untrusted_video_ids_are_omitted(self):
@@ -142,13 +142,13 @@ class NearestModeTest(unittest.TestCase):
         self.assertNotIn("deleted-frame", reply)
 
     def test_unknown_selection_mode_fails_without_calling_the_paid_backend(self):
-        with patch.dict(os.environ, {"PARKSIGHT_PARKING_MODE": "typo"}):
-            with self.assertRaises(convex_client.ParkSightError):
+        with patch.dict(os.environ, {"PARKII_PARKING_MODE": "typo"}):
+            with self.assertRaises(convex_client.ParkiiError):
                 convex_client.find_spot("parking", 1, 2, "s", post=lambda *args: self.fail("unexpected request"))
 
     def test_malformed_success_envelope_is_sanitized(self):
         for raw in (b'not-json', b'[]', b'{"status":"error","errorMessage":"private"}', b'{"status":"success"}'):
-            with self.assertRaises(convex_client.ParkSightError) as error:
+            with self.assertRaises(convex_client.ParkiiError) as error:
                 nearest_client.find_nearest(37.762, -122.4348, "s", post=lambda *args: (200, raw))
             self.assertNotIn("private", str(error.exception))
 

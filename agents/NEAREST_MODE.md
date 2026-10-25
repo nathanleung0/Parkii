@@ -3,8 +3,8 @@
 Set these values in ignored `agents/.env`, then restart the existing demo host without changing its seed:
 
 ```dotenv
-PARKSIGHT_CHAT_ONLY=0
-PARKSIGHT_PARKING_MODE=nearest
+PARKII_CHAT_ONLY=0
+PARKII_PARKING_MODE=nearest
 ```
 
 The agent geocodes the request, calls the same public `parking:findSpot` mutation used by DriverView,
@@ -34,8 +34,8 @@ source as `worker/sources.py`. The thumbnail is explicitly labeled **Camera thum
 it is not claimed to be the exact frame used for occupancy detection. Backend retention or a stable
 latest-frame HTTP endpoint would require the shared Convex owner's review and deployment.
 
-`PARKSIGHT_PARKING_MODE=assistant` remains the default and retains the existing language-model-backed
-route. Unknown mode values fail safely. `PARKSIGHT_CHAT_ONLY=1` still blocks all parking requests in
+`PARKII_PARKING_MODE=assistant` remains the default and retains the existing language-model-backed
+route. Unknown mode values fail safely. `PARKII_CHAT_ONLY=1` still blocks all parking requests in
 either mode. Convex and ASI:One plan/usage limits still apply; no subscription, billing setting or API
 key has been changed. Optional Elastic or remote Rules providers may run if configured separately.
 Nova's live test uses the local DataSF-only rules path, with remote/Elastic providers unconfigured.

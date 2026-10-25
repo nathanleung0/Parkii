@@ -4,31 +4,31 @@
 |---|---|
 | 0. Cloud Convex deployment | **Not done**: needs `npx convex login` by a team member. Until then the backend is local, so camera-frame links in agent replies are not reachable from ASI:One. |
 | 1. `POST /agent/find` in Convex | Done and tested (401 / 400 / held spot + frame URL). |
-| 2. ParkSight Agent (Agent Chat Protocol) | Built; chat handler tested end to end against the live backend; boots and publishes its manifest. **Not yet tried inside ASI:One** (needs the Agentverse mailbox step). Interactive Cards and Payment Protocol not built. |
+| 2. Parkii Agent (Agent Chat Protocol) | Built; chat handler tested end to end against the live backend; boots and publishes its manifest. **Not yet tried inside ASI:One** (needs the Agentverse mailbox step). Interactive Cards and Payment Protocol not built. |
 | 3. Cartesia speech-to-text in the web app | Built (`transcribe` action + MediaRecorder UI). Error path tested; **not tested with a real key or a real microphone**. |
-| 4. Rules Agent | Built. DataSF street cleaning verified live. Apify + Elastic path built and unit-tested with fake transports only; not run against real services. uAgent-to-uAgent delivery not verified (fallback runs in-process). |
+| 4. Rules Agent | Built. DataSF street cleaning verified live. Apify + Elastic path built and unit-tested with fake transports only; not run against real services. uAgent-to-uAgent delivery not verified (fallback runs in-process). The web voice agent now calls the same Elastic tool through `convex/rules.ts` (`search_parking_rules`); typechecked only, **not run against a real Elastic deployment**. |
 | 5. Calibration, demo recording, submission | Cams 2 and 5 have a first-pass calibration from recorded footage that misses empty legal spots (Cam 2: one stall, Cam 5: none); Nathan is recalibrating by hand. Demo recording, README badges and Devpost opt-ins not started. |
 
 ---
 
-# Merge plan: ParkSight absorbs the useful parts of Vortex
+# Merge plan: Parkii absorbs the useful parts of Vortex
 
 ## Context
 The team is merging its two Cal Hacks ideas.
-- **ParkSight** (`D:\Cal Hacks 2026\parking finder`) works end to end: public Castro Street YouTube cams → YOLO → Convex → React/Leaflet map, with spot holds and a Claude/Cartesia voice assistant.
-- **Vortex** (`D:\Cal Hacks 2026\vortex`, GitHub `JoshSunJ/vortex`) is a Windows voice workspace manager. It shares no maps, location, CV or Convex with ParkSight, but it has built pieces that fit a driver: Cartesia speech-to-text, a Fetch.ai agent boundary, and Nathan's Apify and Elastic adapters.
+- **Parkii** (`D:\Cal Hacks 2026\parking finder`) works end to end: public Castro Street YouTube cams → YOLO → Convex → React/Leaflet map, with spot holds and a Claude/Cartesia voice assistant.
+- **Vortex** (`D:\Cal Hacks 2026\vortex`, GitHub `JoshSunJ/vortex`) is a Windows voice workspace manager. It shares no maps, location, CV or Convex with Parkii, but it has built pieces that fit a driver: Cartesia speech-to-text, a Fetch.ai agent boundary, and Nathan's Apify and Elastic adapters.
 
 **Decisions made:**
-- ParkSight is the product. Only Vortex parts that serve a driver come over; the desktop workspace manager (Electron app, extension, Windows helper) is set aside.
-- Backend stays split: ParkSight keeps **Convex**. Vortex's Python providers run in their own process and talk to Convex over HTTP. No SpacetimeDB.
+- Parkii is the product. Only Vortex parts that serve a driver come over; the desktop workspace manager (Electron app, extension, Windows helper) is set aside.
+- Backend stays split: Parkii keeps **Convex**. Vortex's Python providers run in their own process and talk to Convex over HTTP. No SpacetimeDB.
 
-**Merged pitch:** "Ask for parking out loud, or ask an agent in ASI:One. ParkSight finds a spot that public cameras see open right now, holds it for you, and warns you about street cleaning or time limits before you park."
+**Merged pitch:** "Ask for parking out loud, or ask an agent in ASI:One. Parkii finds a spot that public cameras see open right now, holds it for you, and warns you about street cleaning or time limits before you park."
 
 ## What comes over from Vortex
-| Vortex piece | Source (on `origin/main`) | Becomes in ParkSight |
+| Vortex piece | Source (on `origin/main`) | Becomes in Parkii |
 |---|---|---|
 | Cartesia speech-to-text (`ink-whisper`): request, audio magic-byte checks, error mapping | `apps/desktop/electron/voice.mjs` (`CartesiaVoice.transcribe`, `validateAudio`) | Convex action `assistant.transcribe`. Replaces the browser's speech recognition, so Cartesia covers both speech-to-text and text-to-speech. |
-| Fetch.ai agent design (verified sender, per-session ID, safe reply formatting) | `services/fetch-agent/` (design only; it has no running uAgent) | A new Python uAgent, **ParkSight Agent**, with the Agent Chat Protocol, registered on Agentverse. |
+| Fetch.ai agent design (verified sender, per-session ID, safe reply formatting) | `services/fetch-agent/` (design only; it has no running uAgent) | A new Python uAgent, **Parkii Agent**, with the Agent Chat Protocol, registered on Agentverse. |
 | Apify extractor + URL guard | `services/intelligence/extract/{apify.py,url_guard.py}` | A **Rules Agent** feature: crawl public SFMTA parking-rule pages. |
 | Elastic indexing and search | `services/intelligence/retrieval/elastic.py` (`ensure_setup`, `index_source`, `search_sources`) | A **Rules Agent** feature: semantic search over crawled rules. |
 | Shared HTTP and error helpers | `services/intelligence/provider_common/` | Copied as-is; the adapters depend on them. |
@@ -41,7 +41,7 @@ convex/            existing + http routes /agent/find, action assistant.transcri
 src/               existing React app (VoiceAsk switches to MediaRecorder + Cartesia)
 worker/            existing camera worker (unchanged)
 agents/            NEW, Python 3.13
-  parksight_agent.py    uAgent + Agent Chat Protocol: geocode → Convex /agent/find → ask Rules Agent → reply
+  parkii_agent.py    uAgent + Agent Chat Protocol: geocode → Convex /agent/find → ask Rules Agent → reply
   rules_agent.py        uAgent: street-cleaning lookup (DataSF) + Elastic search over Apify-crawled SFMTA pages
   geocode.py            Castro landmark table + Nominatim fallback limited to SF
   providers/            copied from vortex: extract/, retrieval/, provider_common/ (+ their tests)
@@ -55,7 +55,7 @@ agents/            NEW, Python 3.13
 - `npx convex login` and deploy to a **cloud** deployment. Teammates, phones and Agentverse-connected agents can't reach the current local `127.0.0.1:3210` backend, and frame URLs must be public for ASI:One replies.
 - Move secrets with `npx convex env set`: `INGEST_SECRET`, `AGENT_SECRET` (new), `ANTHROPIC_API_KEY`, `CARTESIA_API_KEY`.
 - The worker keeps running on one laptop and points at the cloud site URL. `worker/poll.py` already reads `CONVEX_SITE_URL`.
-- Push to a public GitHub repo (Fetch requires one). Either a new `parksight` repo or a new branch in the team repo; don't touch Vortex `main`. Team's call.
+- Push to a public GitHub repo (Fetch requires one). Either a new `parkii` repo or a new branch in the team repo; don't touch Vortex `main`. Team's call.
 
 ### 1. Agent HTTP endpoint in Convex (Andrew or Nathan, about 45 min)
 - Refactor `convex/assistant.ts` `ask` into an `internalAction` core (`askCore`) shared by the public `ask` action and the HTTP route.
@@ -65,7 +65,7 @@ agents/            NEW, Python 3.13
   - Response adds `frameUrl`, the latest camera frame for the chosen stall from `ctx.storage.getUrl`.
 - Use the ASI:One sender address as `sessionId`, so each chat user holds at most one spot.
 
-### 2. ParkSight Agent: Fetch.ai, the main sponsor deliverable (Nova, about 3 h)
+### 2. Parkii Agent: Fetch.ai, the main sponsor deliverable (Nova, about 3 h)
 Fetch's mandatory list: agent registered on Agentverse, Agent Chat Protocol, discoverable and usable in ASI:One with the whole flow inside the chat, real tool execution, public repo with run instructions.
 - Build on the official uAgents chat protocol (`ChatMessage`, `ChatAcknowledgement`): acknowledge every message. Connect through a mailbox to Agentverse and give it a clear, searchable description ("live street parking in San Francisco's Castro from public cameras").
 - Flow per message:
@@ -92,7 +92,7 @@ Fetch's mandatory list: agent registered on Agentverse, Agent Chat Protocol, dis
   - `ElasticRetrieval.ensure_setup()` with `ELASTIC_INDEX=parksight-rules`.
   - `extract_article` on a short list of public SFMTA pages (parking regulations, meters, time limits, residential permits).
   - `index_source(...)` with a fixed demo user and workspace scope `castro`.
-- Each request from the ParkSight Agent:
+- Each request from the Parkii Agent:
   - **Street cleaning:** query the DataSF street-sweeping dataset (public Socrata API) for the block nearest the stall. Confirm the dataset ID and fields when implementing.
   - **Rules text:** `search_sources("parking rules near <street>", SearchScope(user_id=…, workspace_id="castro"))` for one cited excerpt.
 - If Elastic or Apify isn't configured, reply with the street-cleaning info only. Say that plainly: per Vortex's own rule, a fallback doesn't count as sponsor evidence.
@@ -118,7 +118,7 @@ Fetch's mandatory list: agent registered on Agentverse, Agent Chat Protocol, dis
 ## Verification
 1. **Convex cloud:** worker running against the cloud deployment; the cloud driver page shows live frames and stall changes within ~20 s.
 2. `curl -X POST <site>/agent/find -H "x-agent-secret: …" -d '{"text":"near Castro Theatre","lat":37.762,"lng":-122.4348,"sessionId":"test"}'` returns a held spot and a `frameUrl`. A second `sessionId` gets a different stall.
-3. **ParkSight Agent:** starts locally and appears on Agentverse with an address. In **ASI:One**, "find me parking near the Castro Theatre" returns spot, freshness, rule warning, frame link and map link, all inside the chat.
+3. **Parkii Agent:** starts locally and appears on Agentverse with an address. In **ASI:One**, "find me parking near the Castro Theatre" returns spot, freshness, rule warning, frame link and map link, all inside the chat.
 4. **Rules Agent:**
    - `python -m agents.rules_agent seed` reports real Apify run IDs and indexed doc counts.
    - A search returns a cited excerpt.

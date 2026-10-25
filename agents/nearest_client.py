@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
-from .convex_client import ParkSightError
+from .convex_client import ParkiiError
 
 MAX_RESPONSE_BYTES = 1_000_000
 ERROR = "The parking backend didn't answer correctly. Try again in a moment."
@@ -39,7 +39,7 @@ def _origin(env=None):
     except (TypeError, ValueError):
         valid = False
     if not valid:
-        raise ParkSightError("Configure a valid HTTPS Convex cloud deployment for nearest-spot mode.")
+        raise ParkiiError("Configure a valid HTTPS Convex cloud deployment for nearest-spot mode.")
     return "https://" + slug + ".convex.cloud"
 
 
@@ -54,7 +54,7 @@ def _post(url, headers, body):
         with urllib.request.build_opener(_NoRedirects()).open(request, timeout=20) as response:
             raw = response.read(MAX_RESPONSE_BYTES + 1)
             if len(raw) > MAX_RESPONSE_BYTES:
-                raise ParkSightError(ERROR)
+                raise ParkiiError(ERROR)
             return response.status, raw
     except urllib.error.HTTPError as error:
         return error.code, b""
@@ -66,13 +66,13 @@ def _call(origin, kind, function, args, post):
     body = json.dumps({"path": function, "args": args, "format": "json"}).encode()
     status, raw = post(origin + "/api/" + kind, {"Content-Type": "application/json"}, body)
     if status != 200 or not isinstance(raw, bytes) or len(raw) > MAX_RESPONSE_BYTES:
-        raise ParkSightError(ERROR)
+        raise ParkiiError(ERROR)
     try:
         payload = json.loads(raw)
     except (ValueError, UnicodeError):
-        raise ParkSightError(ERROR) from None
+        raise ParkiiError(ERROR) from None
     if not isinstance(payload, dict) or payload.get("status") != "success" or "value" not in payload:
-        raise ParkSightError(ERROR)
+        raise ParkiiError(ERROR)
     return payload["value"]
 
 
@@ -107,7 +107,7 @@ def _camera_links(origin, spot, post):
         return {"cameraUrl": "https://www.youtube.com/watch?v=" + video_id,
                 "frameUrl": "https://i.ytimg.com/vi/" + video_id + "/maxresdefault_live.jpg",
                 "frameKind": "thumbnail"}
-    except ParkSightError:
+    except ParkiiError:
         return {}  # Never retry or replace the already-created hold for a camera-link failure.
 
 
@@ -115,7 +115,7 @@ def find_nearest(lat, lng, session_id, post=None):
     """The existing shared mutation owns freshness, conflicts and the three-minute app hold."""
     if (not _number(lat, -90, 90) or not _number(lng, -180, 180)
             or not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 250):
-        raise ParkSightError("Provide a valid location and chat session before finding parking.")
+        raise ParkiiError("Provide a valid location and chat session before finding parking.")
     origin = _origin()
     transport = post or _post
     # Use the same namespace as /agent/find; never accept a caller-selected function name.
@@ -126,7 +126,7 @@ def find_nearest(lat, lng, session_id, post=None):
         return {"spot": None, "reply": mode + ": no fresh, open spots are available on the cameras right now.",
                 "frameUrl": None, "selectionMode": "nearest"}
     if not _valid_spot(spot):
-        raise ParkSightError(ERROR)
+        raise ParkiiError(ERROR)
     links = _camera_links(origin, spot, transport)
     return {"spot": spot, "reply": mode + f": {spot['label']} is the nearest available spot.",
             "frameUrl": links.get("frameUrl"), "frameKind": links.get("frameKind"),

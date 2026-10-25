@@ -73,7 +73,7 @@ def _nominatim(query: str) -> Optional[tuple]:
         "q": f"{query}, San Francisco, CA", "format": "jsonv2", "limit": 1,
         "viewbox": VIEWBOX, "bounded": 1, "countrycodes": "us"})
     req = urllib.request.Request(f"{GEOCODER_URL}?{params}",
-                                 headers={"User-Agent": "ParkSight/0.1 (Cal Hacks 13.0 hackathon project)"})
+                                 headers={"User-Agent": "Parkii/0.1 (Cal Hacks 13.0 hackathon project)"})
     with urllib.request.urlopen(req, timeout=8) as resp:
         rows = json.loads(resp.read().decode("utf-8"))
     return (float(rows[0]["lat"]), float(rows[0]["lon"])) if rows else None

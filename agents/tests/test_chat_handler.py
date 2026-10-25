@@ -16,15 +16,15 @@ class ChatHandlerTest(unittest.IsolatedAsyncioTestCase):
     def setUpClass(cls):
         with patch.dict(os.environ, {"AGENT_SEED": "offline-test-seed"}), \
                 patch("agents.config.load_env"), patch("uagents.Agent"):
-            cls.module = importlib.import_module("agents.parksight_agent")
+            cls.module = importlib.import_module("agents.parkii_agent")
             cls.module.agent.address = "agent1offline-test"
 
     @classmethod
     def tearDownClass(cls):
-        sys.modules.pop("agents.parksight_agent", None)
+        sys.modules.pop("agents.parkii_agent", None)
 
     def setUp(self):
-        self.mode = patch.dict(os.environ, {"PARKSIGHT_CHAT_ONLY": "0"})
+        self.mode = patch.dict(os.environ, {"PARKII_CHAT_ONLY": "0"})
         self.mode.start()
         self.addCleanup(self.mode.stop)
 
@@ -81,7 +81,7 @@ class ChatHandlerTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_chat_only_mode_blocks_all_parking_tools(self):
         ctx = self.context()
-        with patch.dict(os.environ, {"PARKSIGHT_CHAT_ONLY": "1"}), \
+        with patch.dict(os.environ, {"PARKII_CHAT_ONLY": "1"}), \
                 patch.object(self.module.geocode, "resolve", side_effect=AssertionError("unexpected geocoding")), \
                 patch.object(self.module.convex_client, "find_spot", side_effect=AssertionError("unexpected parking request")), \
                 patch.object(self.module, "rules_for", side_effect=AssertionError("unexpected rules request")):

@@ -14,7 +14,7 @@ Status is as of commit `0bdc3d8` (Sat 3:39 PM). Most features are **built**; wha
 | Person | Owns | First thing to do |
 |---|---|---|
 | **Andrew** | Cloud deployment + integration + submission | Deploy Convex to the cloud so everyone (and ASI:One) can reach it |
-| **Nova** | ASI:One / Fetch.ai agent, live | Connect the ParkSight Agent's mailbox on Agentverse and chat with it in ASI:One |
+| **Nova** | ASI:One / Fetch.ai agent, live | Connect the Parkii Agent's mailbox on Agentverse and chat with it in ASI:One |
 | **Josh** | Voice, live | Test speech-to-text with a real Cartesia key and a real microphone |
 | **Nathan** | Cameras, coverage, demo footage + Convex reviewer | Recalibrate Cams 2 and 5 by hand, then record demo footage |
 
@@ -49,11 +49,11 @@ no-availability check are documented in [the demo runbook](../agents/DEMO_RUNBOO
 2. ASI:One help and real Convex parking requests are verified. A held-spot reply
    was observed earlier; availability depends on the current calibrated camera data.
 3. Andrew can use the stable public agent address in the runbook and root README.
-4. A [3:40 captioned ASI walkthrough draft](demo/parksight-asi-one.mp4) is prepared.
-   It includes a genuine successful response and a later no-availability request;
-   it is a sampled, silent review draft. Andrew coordinates final video review,
-   any continuous successful-flow retake, and submission. Do not force occupied
-   stalls open or present an old reply as a current reading.
+4. A [3:40 captioned ASI walkthrough draft](demo/parksight-asi-one.mp4) is prepared
+   under the former ParkSight name. It includes a genuine successful response and
+   a later no-availability request; it is a sampled, silent review draft. Andrew
+   coordinates final review, any continuous successful-flow retake, and submission.
+   Do not force occupied stalls open or present old replies as current readings.
 5. Remote Rules-Agent messaging, Claude-in-ASI, Elastic and Apify are not marked
    verified by the nearest-mode evidence. Interactive Cards and payment remain stretch.
 

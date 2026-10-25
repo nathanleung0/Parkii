@@ -1,4 +1,4 @@
-"""ParkSight worker: grab camera frames, detect vehicles, push to Convex.
+"""Parkii worker: grab camera frames, detect vehicles, push to Convex.
 
 Occupancy itself is computed in Convex (convex/ingest.ts) from the vehicle
 boxes, so stall edits in the Calibrate view apply without restarting this.

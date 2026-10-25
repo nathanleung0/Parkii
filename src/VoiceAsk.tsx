@@ -33,6 +33,7 @@ export function VoiceAsk({
   const [busy, setBusy] = useState(false);
   const [reply, setReply] = useState<string | null>(null);
   const [steps, setSteps] = useState<string[]>([]);
+  const [rules, setRules] = useState<AgentResult["rules"]>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stopTimer = useRef<number | undefined>(undefined);
 
@@ -44,12 +45,14 @@ export function VoiceAsk({
     if (!q.trim()) return;
     setBusy(true);
     setSteps([]);
+    setRules(null);
     unlockAudio();
     void say("On it.");
     try {
       const r = await run({ text: q, lat, lng, sessionId, selectedCamera });
       setReply(r.reply);
       setSteps(r.steps);
+      setRules(r.rules);
       onResult(r);
       await say(r.reply);
     } catch (e) {
@@ -159,6 +162,18 @@ export function VoiceAsk({
             <li key={i}>{s}</li>
           ))}
         </ul>
+      )}
+      {rules && rules.hits.length > 0 && (
+        <div className="rule-sources">
+          <span>Elastic search: “{rules.query}”</span>
+          {rules.hits.map((h, i) =>
+            h.url ? (
+              <a key={i} href={h.url} target="_blank" rel="noreferrer">{h.title}</a>
+            ) : (
+              <span key={i}>{h.title}</span>
+            ),
+          )}
+        </div>
       )}
     </div>
   );
