@@ -36,7 +36,7 @@ export function sessionId(): string {
 export type DisplayStatus = "open" | "taken" | "held" | "stale";
 
 export function displayStatus(s: Stall, now: number, mySession: string): DisplayStatus {
-  if (s.status === "unknown" || now - s.updatedAt > STALE_MS) return "stale";
+  if (s.status === "unknown" || now - s.updatedAt >= STALE_MS) return "stale";
   if (s.status === "taken") return "taken";
   const heldByOther = s.holds.some((h) => h.expiresAt > now && h.sessionId !== mySession);
   return heldByOther ? "held" : "open";

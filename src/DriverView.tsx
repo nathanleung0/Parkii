@@ -4,10 +4,12 @@ import { Map as MapGL, Marker, NavigationControl, type MapRef } from "react-map-
 import { api } from "../convex/_generated/api";
 import { CameraFrame } from "./CameraFrame";
 import { VoiceAsk } from "./VoiceAsk";
+import { deriveCoverageFreshness } from "./coverageFreshness";
 import {
   CASTRO_CENTER,
   MAP_STYLE,
   STATUS_COLOR,
+  STALE_MS,
   ago,
   displayStatus,
   sessionId,
@@ -20,7 +22,8 @@ export function DriverView() {
   const [locationLabel, setLocationLabel] = useState("Castro & Market");
   const session = useMemo(sessionId, []);
   const cameras = useQuery(api.parking.listCamerasNear, { lat: you[0], lng: you[1] }) ?? [];
-  const stalls = useQuery(api.parking.listStallsNear, { lat: you[0], lng: you[1], sessionId: session }) ?? [];
+  const nearbyStalls = useQuery(api.parking.listStallsNear, { lat: you[0], lng: you[1], sessionId: session });
+  const stalls = nearbyStalls ?? [];
   const coverage = useQuery(api.parking.coverage, { lat: you[0], lng: you[1] });
   const findSpot = useMutation(api.parking.findSpot);
   const releaseHold = useMutation(api.parking.releaseHold);
@@ -42,7 +45,8 @@ export function DriverView() {
 
   const cam = cameras.find((c) => c._id === selectedCam) ?? cameras[0];
   const camStalls = (camId: string) => stalls.filter((s) => s.cameraId === camId);
-  const coverageTone = !coverage ? "checking" : coverage.observedStalls === 0 ? "none" : coverage.freshStalls === 0 ? "delayed" : "fresh";
+  const liveCoverage = deriveCoverageFreshness(coverage, nearbyStalls, you, now, STALE_MS);
+  const coverageTone = liveCoverage.tone;
 
   async function onFind() {
     setBusy(true);
@@ -169,7 +173,7 @@ export function DriverView() {
             <span className="coverage-dot" aria-hidden="true" />
             <div>
               <strong>{coverageTone === "fresh" ? "Recent camera coverage" : coverageTone === "delayed" ? "Camera data delayed" : coverageTone === "none" ? "No camera coverage here" : "Checking camera coverage"}</strong>
-              <span>{coverageTone === "fresh" ? `${coverage!.freshStalls} monitored ${coverage!.freshStalls === 1 ? "space" : "spaces"} updated recently` : coverageTone === "delayed" ? "Nearby spaces have no recent observation" : coverageTone === "none" ? "Try another point on the map" : "Looking for monitored curb spaces nearby"}</span>
+              <span>{coverageTone === "fresh" ? `${liveCoverage.freshStalls} monitored ${liveCoverage.freshStalls === 1 ? "space" : "spaces"} updated recently` : coverageTone === "delayed" ? "Nearby spaces have no recent observation" : coverageTone === "none" ? "Try another point on the map" : "Looking for monitored curb spaces nearby"}</span>
             </div>
           </div>
 
@@ -202,11 +206,7 @@ export function DriverView() {
           {findError && <p className="feedback error">Search is unavailable right now. Please try again.</p>}
           {spot === null && (
             <p className="feedback">
-              {coverage?.observedStalls === 0
-                ? "No camera-observed parking within 600 m of this location yet."
-                : coverage?.freshStalls === 0
-                  ? "Nearby camera data is stale. Try again later."
-                  : "No nearby open spots with fresh camera data right now."}
+              {liveCoverage.noResultMessage}
             </p>
           )}
           {spot && (
