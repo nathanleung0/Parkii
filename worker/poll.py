@@ -13,21 +13,20 @@ import argparse
 import base64
 import hashlib
 import itertools
+import json
 import os
 import pathlib
+import re
 import time
 
 import cv2
 import numpy as np
 import requests
-import torch._utils  # noqa: F401  torch 2.14 lazy-loads this, which breaks checkpoint loading
-from ultralytics import YOLO
-
 from sources import grab_frame
 from sharding import belongs_to_shard
+from vision import create_detector, add_vision_args, config_from_args
 
 ROOT = pathlib.Path(__file__).resolve().parent
-VEHICLE_CLASSES = [2, 3, 5, 7]  # COCO: car, motorcycle, bus, truck
 UPLOAD_WIDTH = 960
 
 
@@ -47,16 +46,29 @@ def load_env() -> dict:
 class Worker:
     def __init__(self, args):
         env = load_env()
-        self.site = env.get("CONVEX_SITE_URL") or env["VITE_CONVEX_SITE_URL"]
+        self.site = env.get("CONVEX_SITE_URL") or env.get("VITE_CONVEX_SITE_URL")
+        if getattr(args,"cameras_file",None) and not args.dry_run:
+            raise ValueError("--cameras-file is only allowed with --dry-run")
+        if not self.site and not (args.dry_run and getattr(args,"cameras_file",None)):
+            raise ValueError("Set CONVEX_SITE_URL or use --dry-run with --cameras-file")
         self.secret = env.get("INGEST_SECRET", "")
         self.args = args
-        self.model = YOLO(args.model)
+        self.detector = create_detector(config_from_args(args))
+        print(f"[vision] {self.detector.describe()}")
         self.last_hash: dict[str, int] = {}
         self.last_preview: dict[str, float] = {}
         self.camera_cache: tuple[float, list[dict]] = (0, [])
         self.replay_iters: dict[str, itertools.cycle] = {}
 
     def cameras(self) -> list[dict]:
+        if getattr(self.args,"cameras_file",None):
+            path = pathlib.Path(self.args.cameras_file)
+            if path.stat().st_size > 5*1024*1024:
+                raise ValueError("Offline camera file is too large")
+            cameras = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(cameras,list) or not cameras or not all(isinstance(c,dict) and isinstance(c.get("camId"),str) and re.fullmatch(r"[A-Za-z0-9_-]+",c["camId"]) for c in cameras):
+                raise ValueError("Invalid offline camera list")
+            return cameras
         if time.time() - self.camera_cache[0] < 60:
             return self.camera_cache[1]
         r = requests.get(
@@ -77,15 +89,8 @@ class Worker:
             return cv2.imread(str(next(self.replay_iters[cam["camId"]]))), "replay"
         return grab_frame(cam)
 
-    def detect(self, frame: np.ndarray) -> list[list[float]]:
-        h, w = frame.shape[:2]
-        res = self.model.predict(
-            frame, classes=VEHICLE_CLASSES, conf=self.args.conf, imgsz=self.args.imgsz, verbose=False
-        )[0]
-        out = []
-        for (x1, y1, x2, y2), c in zip(res.boxes.xyxy.tolist(), res.boxes.conf.tolist()):
-            out.append([round(x1 / w, 4), round(y1 / h, 4), round(x2 / w, 4), round(y2 / h, 4), round(c, 3)])
-        return out
+    def detect(self, frame: np.ndarray, stalls=()) -> list[list[float]]:
+        return self.detector.detect(frame, stalls)
 
     def push(self, cam: dict, frame: np.ndarray, vehicles: list, include_preview: bool) -> dict:
         body = {
@@ -135,8 +140,7 @@ class Worker:
         if self.last_hash.get(cam["camId"]) == digest and not self.args.replay:
             print(f"[{cam['camId']}] frame unchanged, skipping")
             return
-        self.last_hash[cam["camId"]] = digest
-        vehicles = self.detect(frame)
+        vehicles = self.detect(frame, cam.get("stalls", []))
         if self.args.record:
             self.record(cam, frame)
         if self.args.debug:
@@ -145,6 +149,7 @@ class Worker:
         result = {} if self.args.dry_run else self.push(cam, frame, vehicles, preview)
         if preview and not self.args.dry_run:
             self.last_preview[cam["camId"]] = time.time()
+        self.last_hash[cam["camId"]] = digest
         print(f"[{cam['camId']}] {src} {len(vehicles)} vehicles, {result} in {time.time() - t0:.1f}s")
 
     def run(self):
@@ -181,14 +186,13 @@ if __name__ == "__main__":
     p.add_argument("--dry-run", action="store_true", help="don't push to Convex")
     p.add_argument("--record", metavar="DIR")
     p.add_argument("--replay", metavar="DIR")
+    p.add_argument("--cameras-file", help="offline calibration JSON; requires --dry-run")
     p.add_argument("--only", nargs="*", help="camIds to process")
     p.add_argument("--interval", type=float, default=15.0, help="seconds per full camera cycle")
     p.add_argument("--preview-interval", type=float, default=60.0, help="seconds between preview uploads per camera")
     p.add_argument("--shard-count", type=int, default=1, help="number of worker processes sharing cameras")
     p.add_argument("--shard-index", type=int, default=0, help="this worker's shard, starting at zero")
-    p.add_argument("--model", default="yolo11s.pt")
-    p.add_argument("--imgsz", type=int, default=1280)
-    p.add_argument("--conf", type=float, default=0.25)
+    add_vision_args(p)
     args = p.parse_args()
     if args.shard_count < 1 or not 0 <= args.shard_index < args.shard_count:
         p.error("shard-index must be between 0 and shard-count - 1")

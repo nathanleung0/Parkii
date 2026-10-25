@@ -1,0 +1,19 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "python": "3.13.4",
+  "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+  "logical_cpu_count": 16,
+  "measured_cpu_threads": 4,
+  "training_performed": false,
+  "paid_api_calls": false,
+  "packages": {
+    "torch": "2.10.0+cpu",
+    "torchvision": "0.25.0+cpu",
+    "ultralytics": "8.4.188",
+    "rfdetr": "1.11.2",
+    "transformers": "5.20.2",
+    "opencv-python": "5.0.0.93",
+    "numpy": "2.5.2",
+    "supervision": "0.31.2"
+  }
+}

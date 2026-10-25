@@ -1,0 +1,2 @@
+# Optional local RF-DETR comparator; base vision dependencies must be installed first.
+rfdetr==1.11.2

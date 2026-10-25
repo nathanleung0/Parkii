@@ -13,7 +13,7 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
 ## How it works
 
 1. **Frames:** `worker/sources.py` reads configured YouTube Live, direct HLS, or HTTPS image feeds. Castro uses YouTube HLS via `yt-dlp`, with its live thumbnail as a fallback. New feeds are imported through an operator-only registry and require manual stall calibration.
-2. **Detection:** `worker/poll.py` runs YOLO11s (cars, trucks, buses, motorcycles) on each frame on a configurable cycle. It POSTs vehicle boxes to Convex `/ingest`; a downscaled preview JPEG is uploaded once per minute by default.
+2. **Detection:** `worker/poll.py` retains YOLO11s by default and supports optional YOLO26/RF-DETR comparisons, with configurable CPU/CUDA inference. See [worker setup and comparison](worker/README.md). Parking accuracy must be measured on labeled footage before promoting a configuration. It runs on a configurable cycle. It POSTs vehicle boxes to Convex `/ingest`; a downscaled preview JPEG is uploaded once per minute by default.
 3. **Occupancy (in Convex):** `convex/ingest.ts` takes each vehicle's **ground footprint** (bottom 35% of its box) and checks how much falls inside each stall polygon (≥ 40% means occupied). Majority vote over the last 3 readings gives the status and a vote-agreement score, which is not a calibrated probability of availability.
    - Why footprints: on an oblique camera, cars driving in the next lane overlap the curb stalls in image space. Tuned on Cam 1, parked cars score 0.6–0.8 and passing traffic scores 0–0.1. Whole-box overlap scored passing traffic at 0.24–0.38, causing false "taken" readings.
 4. **Real-time state:** Convex pushes stall changes to nearby clients. `findSpot` considers camera-observed stalls within 600 m of the selected location and picks the nearest fresh, open stall that isn't held by another ParkSight user. A search outside camera coverage reports that no live data is available there.
@@ -39,6 +39,8 @@ npx convex env set CALIBRATION_SECRET <operator-only key entered in #/calibrate>
 npx convex run seed:castro         # once: cameras + starter stalls
 
 python -m venv worker/.venv
+# NVIDIA GPU, Windows/Linux (CPU/macOS: see worker/README.md):
+worker/.venv/Scripts/python -m pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cu128
 worker/.venv/Scripts/pip install -r worker/requirements.txt     # (bin/ on mac/linux)
 worker/.venv/Scripts/python worker/poll.py                      # terminal 2
 
@@ -55,6 +57,8 @@ npx convex env set CARTESIA_VOICE_ID <voice id>   # optional
 Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), `--record DIR` / `--replay DIR` (record live frames, replay them later), `--only castro-cam1`, `--interval 5`, `--preview-interval 60`, and `--shard-count N --shard-index I` for multiple worker processes.
 
 To add cameras in other SF neighborhoods, follow [the coverage guide](docs/COVERAGE.md). The code accepts multiple feed types, but the checked-in seed still contains only the Castro proof of concept. A new feed only becomes searchable after its legal stalls have been calibrated and the feed is enabled.
+
+Vision flags: `--model yolo11s.pt` (retained default), `--model yolo26m.pt` (optional candidate), `--device auto|cpu|0`, `--imgsz 1280`, `--half` (CUDA only), and experimental `--parking-roi`. Compare saved footage without Convex using `python worker/benchmark.py --frames worker/recordings --annotate`. See [worker/README.md](worker/README.md) for labels, metrics and limitations.
 
 `yt-dlp` needs a JavaScript runtime for YouTube; it uses Node, which `sources.py` finds automatically.
 

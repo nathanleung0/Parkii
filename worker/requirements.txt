@@ -1,4 +1,7 @@
-ultralytics
+ultralytics==8.4.188
+# Install the matching CUDA torch/torchvision wheels FIRST; see README.md.
+torch==2.10.0
+torchvision==0.25.0
 opencv-python
 yt-dlp
 requests
