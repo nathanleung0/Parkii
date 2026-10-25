@@ -4,6 +4,7 @@ The wire contract stays [x1, y1, x2, y2, confidence], normalized to the ORIGINAL
 frame. No ML dependencies are imported until a detector is constructed.
 """
 from dataclasses import dataclass
+import hashlib
 import math
 import os
 from pathlib import Path
@@ -40,12 +41,15 @@ class VisionConfig:
 def parking_crop(shape, stalls, margin=0.15):
     """Union of marked stalls plus context; invalid/missing calibration uses full frame."""
     h, w = shape[:2]
-    points = [p for s in stalls for p in s.get("polygon", [])]
-    valid = points and all(
+    polygons = [s.get("polygon", []) for s in stalls]
+    points = [p for poly in polygons for p in poly]
+    valid = points and all(len(poly) >= 3 for poly in polygons) and all(
         len(p) == 2 and all(isinstance(v, (int, float)) and math.isfinite(v) and 0 <= v <= 1 for v in p)
         for p in points
     )
     if not valid:
+        return 0, 0, w, h
+    if any(abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(poly, poly[1:] + poly[:1]))) < 1e-12 for poly in polygons):
         return 0, 0, w, h
     xs, ys = zip(*points)
     crop = (max(0, math.floor((min(xs) - margin) * w)),
@@ -107,9 +111,10 @@ class VehicleDetector:
         os.environ.setdefault("YOLO_AUTOINSTALL", "false")
         import torch
         import torch._utils  # compatibility with checkpoint loading on newer torch releases
-        from ultralytics import YOLO
+        from ultralytics import YOLO, __version__
 
         self.torch = torch
+        self.ultralytics_version = __version__
         self.device = resolve_device(config.device, torch)
         if config.half and self.device == "cpu":
             raise ValueError("--half requires a CUDA GPU; remove --half for CPU inference")
@@ -120,11 +125,14 @@ class VehicleDetector:
             path = ROOT / "models" / config.model
             path.parent.mkdir(parents=True, exist_ok=True)
         self.model = YOLO(str(path))
+        with path.open("rb") as weights:
+            self.weights_sha256 = hashlib.file_digest(weights, "sha256").hexdigest()
 
     def describe(self):
         return {"model": self.config.model, "device": self.device,
                 "gpu": None if self.device == "cpu" else self.torch.cuda.get_device_name(int(self.device)),
                 "torch": self.torch.__version__, "half": self.config.half,
+                "ultralytics": self.ultralytics_version, "weights_sha256": self.weights_sha256,
                 "imgsz": self.config.imgsz, "conf": self.config.conf,
                 "parking_roi": self.config.parking_roi, "roi_margin": self.config.roi_margin}
 

@@ -26,7 +26,8 @@ class CoordinatesTest(unittest.TestCase):
     def test_crop_includes_context_and_falls_back_without_valid_calibration(self):
         stalls = [{"polygon": [[.4, .5], [.6, .5], [.6, .7], [.4, .7]]}]
         self.assertEqual(parking_crop((100, 100), stalls, .1), (30, 40, 70, 80))
-        for invalid in ([], [{"polygon": [[float("nan"), .5]]}], [{"polygon": [[2, 3]]}]):
+        for invalid in ([], [{"polygon": [[float("nan"), .5]]}], [{"polygon": [[2, 3]]}],
+                        [{"polygon": [[.1, .1], [.2, .2], [.3, .3]]}]):
             self.assertEqual(parking_crop((720, 1280), invalid), (0, 0, 1280, 720))
 
     def test_detector_passes_vehicle_filter_and_maps_crop(self):
@@ -40,7 +41,7 @@ class CoordinatesTest(unittest.TestCase):
         detector.model.predict.return_value = [result]
         frame = Mock(shape=(100, 100, 3))
         frame.__getitem__ = Mock(return_value="cropped frame")
-        boxes = detector.detect(frame, [{"polygon": [[.2, .3], [.4, .5]]}])
+        boxes = detector.detect(frame, [{"polygon": [[.2, .3], [.4, .3], [.4, .5], [.2, .5]]}])
         self.assertEqual(boxes, [[.2, .3, .4, .5, .8]])
         self.assertEqual(detector.model.predict.call_args.kwargs["classes"], [2, 3, 5, 7])
         self.assertEqual(detector.model.predict.call_args.kwargs["device"], "0")
