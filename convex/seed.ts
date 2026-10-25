@@ -26,21 +26,28 @@ const CAMERAS = [
       { label: "C1-4", lat: 37.76146, lng: -122.43511, polygon: [[595, 540], [668, 522], [676, 574], [603, 590]] },
     ],
   },
+  // Cam 2 looks south along Castro St toward 18th (the Walgreens at 498 Castro is on the right/west side;
+  // Twin Peaks and Sutro Tower are off to the right). FIRST PASS ONLY: derived from a 13-minute recording,
+  // which can only show spots where a car was parked, so it MISSES empty legal spots. Recalibrate by hand at
+  // #/calibrate and copy the result here. Map positions are approximate (about 20-30 m): placed from
+  // DataSF's Castro St centerline (Market-18th), offset ~7 m east for the east curb.
   {
     camId: "castro-cam2",
-    name: "Castro & 18th (Cam 2)",
+    name: "Castro St looking south (Cam 2)",
     youtubeId: "wFESUxAE-S8",
     sourceType: "youtube" as const,
     sourceAttribution: "SF Bay Times Castro Street Cams",
     enabled: true,
-    lat: 37.76092,
-    lng: -122.43485,
-    heading: 225,
+    lat: 37.76185,
+    lng: -122.4351,
+    heading: 180,
     stalls: [
-      { label: "C2-1", lat: 37.76082, lng: -122.43470, polygon: [[1170, 600], [1280, 600], [1280, 675], [1170, 675]] },
-      { label: "C2-2", lat: 37.76097, lng: -122.43532, polygon: [[448, 600], [552, 600], [552, 685], [448, 685]] },
+      { label: "C2-1", lat: 37.7616, lng: -122.43499, polygon: [[436, 596], [556, 586], [562, 696], [436, 704]] },
     ],
   },
+  // Cam 5 shows the Castro Theatre front. FIRST PASS ONLY: the old starter stalls sat in the travel lane
+  // (they flipped taken/open 8-10 times in 13 minutes from passing cars), so they were removed, but the
+  // recording-based pass cannot find empty legal spots. Recalibrate by hand at #/calibrate.
   {
     camId: "castro-cam5",
     name: "Castro Theatre (Cam 5)",
@@ -48,13 +55,10 @@ const CAMERAS = [
     sourceType: "youtube" as const,
     sourceAttribution: "SF Bay Times Castro Street Cams",
     enabled: true,
-    lat: 37.76205,
-    lng: -122.43468,
-    heading: 270,
-    stalls: [
-      { label: "C5-1", lat: 37.76215, lng: -122.43482, polygon: [[1088, 640], [1188, 640], [1188, 694], [1088, 694]] },
-      { label: "C5-2", lat: 37.76208, lng: -122.43483, polygon: [[966, 688], [1088, 688], [1088, 720], [966, 720]] },
-    ],
+    lat: 37.76196,
+    lng: -122.43528,
+    heading: 90,
+    stalls: [],
   },
 ];
 

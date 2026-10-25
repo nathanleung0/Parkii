@@ -7,7 +7,7 @@
 | 2. ParkSight Agent (Agent Chat Protocol) | Built; chat handler tested end to end against the live backend; boots and publishes its manifest. **Not yet tried inside ASI:One** (needs the Agentverse mailbox step). Interactive Cards and Payment Protocol not built. |
 | 3. Cartesia speech-to-text in the web app | Built (`transcribe` action + MediaRecorder UI). Error path tested; **not tested with a real key or a real microphone**. |
 | 4. Rules Agent | Built. DataSF street cleaning verified live. Apify + Elastic path built and unit-tested with fake transports only; not run against real services. uAgent-to-uAgent delivery not verified (fallback runs in-process). |
-| 5. Calibration, demo recording, submission | Not started (Cams 2 and 5 still need calibrating; README badges and Devpost opt-ins pending). |
+| 5. Calibration, demo recording, submission | Cams 2 and 5 have a first-pass calibration from recorded footage that misses empty legal spots (Cam 2: one stall, Cam 5: none); Nathan is recalibrating by hand. Demo recording, README badges and Devpost opt-ins not started. |
 
 ---
 
@@ -98,7 +98,7 @@ Fetch's mandatory list: agent registered on Agentverse, Agent Chat Protocol, dis
 - If Elastic or Apify isn't configured, reply with the street-cleaning info only. Say that plainly: per Vortex's own rule, a fallback doesn't count as sponsor evidence.
 
 ### 5. Integration, calibration, submission (Andrew, ongoing)
-- Calibrate Cams 2 and 5 in `#/calibrate` and fix stall lat/lng on the map. Only Cam 1 is verified.
+- Cams 2 and 5 have only a first-pass calibration (one stall on Cam 2, none on Cam 5) that misses empty legal spots; recalibrate by hand at `#/calibrate` and copy the result into `convex/seed.ts`. Stall map positions are approximate.
 - Record a demo-safe frame set (`worker/poll.py --record`) during a busy hour for replay mode.
 - README updates:
   - Architecture diagram with the agents.

@@ -74,7 +74,7 @@ To add cameras in other SF neighborhoods, follow [the coverage guide](docs/COVER
 
 ## Known limitations (be upfront with judges)
 
-- Coverage is limited to the stalls each camera can see: about 4 on Cam 1, plus rough starter stalls on Cams 2 and 5 that **need calibrating** in the UI. Stall lat/lng values are approximate. No citywide curb-facing footage source is configured.
+- Coverage is limited to the stalls each camera can see. Cam 1 has 4 stalls; Cams 2 and 5 have only a first-pass calibration (1 stall on Cam 2, none on Cam 5) that misses empty legal spots and are being recalibrated by hand. Whether a stall is legal parking is unverified. Stall lat/lng values are approximate (about 20-30 m). No citywide curb-facing footage source is configured.
 - YouTube live adds ~10–20 s of delay. Night frames are darker but Cam 1 still detects well.
 - Castro frames come from public YouTube streams. A production deployment needs direct feed rights from the operator or another authorized source.
 - Detection can't tell legal from illegal spots (hydrants, driveways, loading zones, time limits). Calibrate only legal stalls.
