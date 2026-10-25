@@ -13,8 +13,10 @@ import argparse
 import base64
 import hashlib
 import itertools
+import json
 import os
 import pathlib
+import re
 import time
 
 import cv2
@@ -22,7 +24,7 @@ import numpy as np
 import requests
 from sources import grab_frame
 from sharding import belongs_to_shard
-from vision import VehicleDetector, add_vision_args, config_from_args
+from vision import create_detector, add_vision_args, config_from_args
 
 ROOT = pathlib.Path(__file__).resolve().parent
 UPLOAD_WIDTH = 960
@@ -44,10 +46,14 @@ def load_env() -> dict:
 class Worker:
     def __init__(self, args):
         env = load_env()
-        self.site = env.get("CONVEX_SITE_URL") or env["VITE_CONVEX_SITE_URL"]
+        self.site = env.get("CONVEX_SITE_URL") or env.get("VITE_CONVEX_SITE_URL")
+        if getattr(args,"cameras_file",None) and not args.dry_run:
+            raise ValueError("--cameras-file is only allowed with --dry-run")
+        if not self.site and not (args.dry_run and getattr(args,"cameras_file",None)):
+            raise ValueError("Set CONVEX_SITE_URL or use --dry-run with --cameras-file")
         self.secret = env.get("INGEST_SECRET", "")
         self.args = args
-        self.detector = VehicleDetector(config_from_args(args))
+        self.detector = create_detector(config_from_args(args))
         print(f"[vision] {self.detector.describe()}")
         self.last_hash: dict[str, int] = {}
         self.last_preview: dict[str, float] = {}
@@ -55,6 +61,14 @@ class Worker:
         self.replay_iters: dict[str, itertools.cycle] = {}
 
     def cameras(self) -> list[dict]:
+        if getattr(self.args,"cameras_file",None):
+            path = pathlib.Path(self.args.cameras_file)
+            if path.stat().st_size > 5*1024*1024:
+                raise ValueError("Offline camera file is too large")
+            cameras = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(cameras,list) or not cameras or not all(isinstance(c,dict) and isinstance(c.get("camId"),str) and re.fullmatch(r"[A-Za-z0-9_-]+",c["camId"]) for c in cameras):
+                raise ValueError("Invalid offline camera list")
+            return cameras
         if time.time() - self.camera_cache[0] < 60:
             return self.camera_cache[1]
         r = requests.get(
@@ -126,7 +140,6 @@ class Worker:
         if self.last_hash.get(cam["camId"]) == digest and not self.args.replay:
             print(f"[{cam['camId']}] frame unchanged, skipping")
             return
-        self.last_hash[cam["camId"]] = digest
         vehicles = self.detect(frame, cam.get("stalls", []))
         if self.args.record:
             self.record(cam, frame)
@@ -136,6 +149,7 @@ class Worker:
         result = {} if self.args.dry_run else self.push(cam, frame, vehicles, preview)
         if preview and not self.args.dry_run:
             self.last_preview[cam["camId"]] = time.time()
+        self.last_hash[cam["camId"]] = digest
         print(f"[{cam['camId']}] {src} {len(vehicles)} vehicles, {result} in {time.time() - t0:.1f}s")
 
     def run(self):
@@ -172,6 +186,7 @@ if __name__ == "__main__":
     p.add_argument("--dry-run", action="store_true", help="don't push to Convex")
     p.add_argument("--record", metavar="DIR")
     p.add_argument("--replay", metavar="DIR")
+    p.add_argument("--cameras-file", help="offline calibration JSON; requires --dry-run")
     p.add_argument("--only", nargs="*", help="camIds to process")
     p.add_argument("--interval", type=float, default=15.0, help="seconds per full camera cycle")
     p.add_argument("--preview-interval", type=float, default=60.0, help="seconds between preview uploads per camera")

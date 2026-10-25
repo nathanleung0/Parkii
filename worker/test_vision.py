@@ -51,7 +51,7 @@ class ConfigTest(unittest.TestCase):
     def test_defaults_and_baseline_override(self):
         parser = argparse.ArgumentParser()
         add_vision_args(parser)
-        self.assertEqual(config_from_args(parser.parse_args([])).model, "yolo26m.pt")
+        self.assertEqual(config_from_args(parser.parse_args([])).model, "yolo11s.pt")
         self.assertEqual(config_from_args(parser.parse_args(["--model", "yolo11s.pt"])).model, "yolo11s.pt")
 
     def test_invalid_settings(self):

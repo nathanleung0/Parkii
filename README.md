@@ -56,7 +56,7 @@ Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), 
 
 To add cameras in other SF neighborhoods, follow [the coverage guide](docs/COVERAGE.md). The code accepts multiple feed types, but the checked-in seed still contains only the Castro proof of concept. A new feed only becomes searchable after its legal stalls have been calibrated and the feed is enabled.
 
-Vision flags: `--model yolo26m.pt` (default), `--model yolo11s.pt` (previous baseline), `--device auto|cpu|0`, `--imgsz 1280`, `--half` (CUDA only), and experimental `--parking-roi`. Compare saved footage without Convex using `python worker/benchmark.py --frames worker/recordings --annotate`. See [worker/README.md](worker/README.md) for labels, metrics and limitations.
+Vision flags: `--model yolo11s.pt` (retained default), `--model yolo26m.pt` (optional candidate), `--device auto|cpu|0`, `--imgsz 1280`, `--half` (CUDA only), and experimental `--parking-roi`. Compare saved footage without Convex using `python worker/benchmark.py --frames worker/recordings --annotate`. See [worker/README.md](worker/README.md) for labels, metrics and limitations.
 
 `yt-dlp` needs a JavaScript runtime for YouTube; it uses Node, which `sources.py` finds automatically.
 

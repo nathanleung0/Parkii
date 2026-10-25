@@ -9,11 +9,13 @@ import math
 import os
 from pathlib import Path
 
+from refinement import complete_tile_boxes, fuse_vehicle_boxes, tile_windows
+
 ROOT = Path(__file__).resolve().parent
 VEHICLE_CLASSES = [2, 3, 5, 7]  # COCO car, motorcycle, bus, truck
-DEFAULT_MODEL = "yolo26m.pt"
+DEFAULT_MODEL = "yolo11s.pt"
 DOWNLOADABLE_MODELS = {
-    f"{family}{size}.pt" for family in ("yolo11", "yolo26") for size in "nsmlx"
+    f"{family}{size}{task}.pt" for family in ("yolo11", "yolo26") for size in "nsmlx" for task in ("", "-seg")
 }
 
 
@@ -27,6 +29,11 @@ class VisionConfig:
     parking_roi: bool = False
     roi_margin: float = 0.15  # fraction of the FULL image on every side
 
+    tile_size: int = 0
+    tile_overlap: float = .25
+    tile_limit: int = 16
+    merge_iou: float = .55
+
     def __post_init__(self):
         if self.imgsz < 32 or self.imgsz % 32:
             raise ValueError("imgsz must be a positive multiple of 32")
@@ -34,6 +41,14 @@ class VisionConfig:
             raise ValueError("conf must be between 0 and 1")
         if not math.isfinite(self.roi_margin) or not 0 <= self.roi_margin <= 1:
             raise ValueError("roi-margin must be between 0 and 1")
+        if self.tile_size and (self.tile_size < 64 or self.tile_size % 32):
+            raise ValueError("tile-size must be zero or a multiple of 32 at least 64")
+        if not math.isfinite(self.tile_overlap) or not 0 <= self.tile_overlap < .9 or self.tile_limit < 1:
+            raise ValueError("Invalid tile overlap or crop limit")
+        if not math.isfinite(self.merge_iou) or not 0 < self.merge_iou < 1:
+            raise ValueError("merge-iou must be between 0 and 1")
+        if self.tile_size and self.parking_roi:
+            raise ValueError("Use either parking-roi or tiled refinement, not both")
         if self.device not in ("auto", "cpu") and not self.device.isdigit():
             raise ValueError("device must be auto, cpu, or a CUDA index such as 0")
 
@@ -89,19 +104,25 @@ def resolve_device(requested, torch):
 
 def add_vision_args(parser, *, model=True):
     if model:
-        parser.add_argument("--model", default=DEFAULT_MODEL, help="YOLO weights (default: %(default)s)")
+        parser.add_argument("--model", default=DEFAULT_MODEL, help="official YOLO weights or rfdetr-small (requires --imgsz 512)")
     parser.add_argument("--imgsz", type=int, default=1280)
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--device", default="auto", help="auto, cpu, or CUDA index (0)")
     parser.add_argument("--half", action="store_true", help="FP16 on CUDA only; opt in after comparison")
     parser.add_argument("--parking-roi", action="store_true", help="crop to marked stalls plus context (experimental)")
     parser.add_argument("--roi-margin", type=float, default=0.15)
+    parser.add_argument("--tile-size", type=int, default=0, help="optional full-frame plus parking-region tile refinement")
+    parser.add_argument("--tile-overlap", type=float, default=.25)
+    parser.add_argument("--tile-limit", type=int, default=16, help="fail rather than exceed this crop budget")
+    parser.add_argument("--merge-iou", type=float, default=.55)
 
 
 def config_from_args(args, model=None):
     return VisionConfig(model=model or args.model, imgsz=args.imgsz, conf=args.conf,
                         device=args.device, half=args.half, parking_roi=args.parking_roi,
-                        roi_margin=args.roi_margin)
+                        roi_margin=args.roi_margin, tile_size=getattr(args,"tile_size",0),
+                        tile_overlap=getattr(args,"tile_overlap",.25), tile_limit=getattr(args,"tile_limit",16),
+                        merge_iou=getattr(args,"merge_iou",.55))
 
 
 class VehicleDetector:
@@ -111,7 +132,8 @@ class VehicleDetector:
         os.environ.setdefault("YOLO_AUTOINSTALL", "false")
         import torch
         import torch._utils  # compatibility with checkpoint loading on newer torch releases
-        from ultralytics import YOLO, __version__
+        from ultralytics import YOLO, __version__, settings
+        settings.update({"sync": False})
 
         self.torch = torch
         self.ultralytics_version = __version__
@@ -121,7 +143,7 @@ class VehicleDetector:
         path = Path(config.model).expanduser()
         if not path.is_file():
             if path.name != config.model or config.model not in DOWNLOADABLE_MODELS:
-                raise FileNotFoundError(f"Weights not found: {config.model}. Use an official YOLO11/26 .pt name or an existing trusted weights file.")
+                raise FileNotFoundError(f"Weights not found: {config.model}. Use official YOLO11/26 detection/segmentation weights or an existing trusted file.")
             path = ROOT / "models" / config.model
             path.parent.mkdir(parents=True, exist_ok=True)
         self.model = YOLO(str(path))
@@ -130,11 +152,14 @@ class VehicleDetector:
 
     def describe(self):
         return {"model": self.config.model, "device": self.device,
+                "cpu_threads": self.torch.get_num_threads(),
                 "gpu": None if self.device == "cpu" else self.torch.cuda.get_device_name(int(self.device)),
                 "torch": self.torch.__version__, "half": self.config.half,
                 "ultralytics": self.ultralytics_version, "weights_sha256": self.weights_sha256,
                 "imgsz": self.config.imgsz, "conf": self.config.conf,
-                "parking_roi": self.config.parking_roi, "roi_margin": self.config.roi_margin}
+                "parking_roi": self.config.parking_roi, "roi_margin": self.config.roi_margin,
+                "tile_size": self.config.tile_size, "tile_overlap": self.config.tile_overlap,
+                "tile_limit": self.config.tile_limit, "merge_iou": self.config.merge_iou}
 
     def synchronize(self):
         if self.device != "cpu":
@@ -146,4 +171,24 @@ class VehicleDetector:
         result = self.model.predict(frame[y1:y2, x1:x2], classes=VEHICLE_CLASSES,
                                     conf=self.config.conf, imgsz=self.config.imgsz,
                                     device=self.device, half=self.config.half, verbose=False)[0]
-        return normalize_boxes(result.boxes.xyxy.tolist(), result.boxes.conf.tolist(), crop, frame.shape)
+        rows = normalize_boxes(result.boxes.xyxy.tolist(), result.boxes.conf.tolist(), crop, frame.shape)
+        if not self.config.tile_size:
+            return rows
+        region = parking_crop(frame.shape, stalls, self.config.roi_margin) if stalls else (0,0,frame.shape[1],frame.shape[0])
+        primary_count = len(rows)
+        for tile in tile_windows(frame.shape, region, self.config.tile_size, self.config.tile_overlap, self.config.tile_limit):
+            left,top,right,bottom = tile
+            refined = self.model.predict(frame[top:bottom,left:right], classes=VEHICLE_CLASSES,
+                                         conf=self.config.conf, imgsz=self.config.imgsz,
+                                         device=self.device, half=self.config.half, verbose=False)[0]
+            boxes, scores = complete_tile_boxes(refined.boxes.xyxy.tolist(), refined.boxes.conf.tolist(), tile, frame.shape)
+            rows.extend(normalize_boxes(boxes,scores,tile,frame.shape))
+        return fuse_vehicle_boxes(rows,self.config.merge_iou,preserve_first=primary_count)
+
+
+def create_detector(config):
+    """Select an explicit local adapter without changing the normalized ingest contract."""
+    if config.model == "rfdetr-small":
+        from rf_detector import RFDETRDetector
+        return RFDETRDetector(config)
+    return VehicleDetector(config)
