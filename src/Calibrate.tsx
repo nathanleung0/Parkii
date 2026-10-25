@@ -76,78 +76,87 @@ export function Calibrate() {
 
   return (
     <main className="calibrate">
-      <section>
-        <div className="cam-tabs">
-          {cameras.map((c) => (
-            <button
-              key={c._id}
-              className={c._id === cam._id ? "tab active" : "tab"}
-              onClick={() => {
-                setCamId(c._id);
-                setDraft(null);
-              }}
-            >
-              {c.name}
-            </button>
-          ))}
+      <section className="calibrate-workspace">
+        <div className="calibrate-intro">
+          <p className="eyebrow">OPERATOR WORKSPACE</p>
+          <h1>Calibrate a camera</h1>
+          <p>Mark the legal curb spaces this camera can see, then place each one on the map.</p>
         </div>
-        <CameraFrame camera={cam} stalls={otherStalls} now={now} session={session} onClick={draft ? addPoint : undefined}>
-          {draft && draft.polygon.length > 0 && (
-            <>
-              <polygon
-                points={draft.polygon.map(([x, y]) => `${x},${y}`).join(" ")}
-                fill="#2563eb"
-                fillOpacity={0.3}
-                stroke="#2563eb"
-                strokeWidth={2}
-                vectorEffect="non-scaling-stroke"
-              />
-              {draft.polygon.map(([x, y], i) => (
-                <circle key={i} cx={x} cy={y} r={0.006} fill="#fff" stroke="#2563eb" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-              ))}
-            </>
-          )}
-        </CameraFrame>
-        <div className="cam-meta">
-          Frame updated {ago(cam.lastSeen, now)} · blue dashed boxes = detected vehicles
+        <div className="calibrate-preview">
+          <div className="calibrate-feed-heading">
+            <div><span className="field-label">CAMERA FEED</span><h2>{cam.name}</h2></div>
+            <span className={now - (cam.lastSeen ?? 0) < 60_000 ? "camera-badge live" : "camera-badge offline"}>{now - (cam.lastSeen ?? 0) < 60_000 ? "Recent" : "Waiting for feed"}</span>
+          </div>
+          <div className="cam-tabs">
+            {cameras.map((c) => (
+              <button
+                key={c._id}
+                className={c._id === cam._id ? "tab active" : "tab"}
+                onClick={() => {
+                  setCamId(c._id);
+                  setDraft(null);
+                }}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+          <CameraFrame camera={cam} stalls={otherStalls} now={now} session={session} onClick={draft ? addPoint : undefined}>
+            {draft && draft.polygon.length > 0 && (
+              <>
+                <polygon
+                  points={draft.polygon.map(([x, y]) => `${x},${y}`).join(" ")}
+                  fill="#111111"
+                  fillOpacity={0.3}
+                  stroke="#111111"
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                />
+                {draft.polygon.map(([x, y], i) => (
+                  <circle key={i} cx={x} cy={y} r={0.006} fill="#fff" stroke="#111111" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                ))}
+              </>
+            )}
+          </CameraFrame>
+          <div className="cam-meta">Frame updated {ago(cam.lastSeen, now)} · dashed boxes show detected vehicles</div>
         </div>
-        <p className="muted">
-          Draw each stall as a quadrilateral on the patch of road where a parked car's wheels sit (the lower part of the car). A
-          stall reads "taken" when ≥40% of a detected vehicle's footprint (bottom third of its box) falls inside it. Avoid
-          parklets and travel lanes.
-        </p>
+        <p className="calibrate-guidance">Draw on the road where a parked car’s wheels sit. Avoid parklets, travel lanes, hydrants, and other spaces where parking is not legal.</p>
       </section>
 
-      <aside className="panel">
-        <div className="card">
-          <label className="muted">
-            Calibration key <input type="password" value={adminSecret} onChange={(event) => setAdminSecret(event.target.value)} />
+      <aside className="panel calibrate-panel">
+        <div className="card calibration-controls">
+          <p className="eyebrow">STEP 01 · DEFINE A SPACE</p>
+          <h2>Mark a legal stall</h2>
+          <p className="section-intro">Draw four corners on the camera image, then pin the stall’s street location.</p>
+          <label className="secret-field">
+            Calibration key <input type="password" value={adminSecret} onChange={(event) => setAdminSecret(event.target.value)} placeholder="Operator key" />
           </label>
-          {error && <p className="muted">{error}</p>}
+          {error && <p className="feedback error">{error}</p>}
           {!draft ? (
-            <button className="primary" onClick={newDraft}>+ New stall</button>
+            <button className="primary new-stall" onClick={newDraft}>+ Add parking stall</button>
           ) : (
             <div className="draft">
               <label>
-                Label <input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
+                Stall label <input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
               </label>
               <ol className="steps">
                 <li className={draft.polygon.length >= 4 ? "done" : ""}>
-                  Click 4 corners on the frame ({draft.polygon.length}/4){" "}
+                  Mark 4 corners on the frame ({draft.polygon.length}/4){" "}
                   {draft.polygon.length > 0 && (
-                    <button className="ghost small" onClick={() => setDraft({ ...draft, polygon: [] })}>reset</button>
+                    <button className="ghost small" onClick={() => setDraft({ ...draft, polygon: [] })}>Reset</button>
                   )}
                 </li>
                 <li className={draft.lat ? "done" : ""}>
-                  Click the map where this stall is {draft.lat !== undefined ? `(${draft.lat.toFixed(5)}, ${draft.lng!.toFixed(5)})` : "(required)"}
+                  Pin its location on the map {draft.lat !== undefined ? `(${draft.lat.toFixed(5)}, ${draft.lng!.toFixed(5)})` : "(required)"}
                 </li>
               </ol>
-              <div className="find-row">
+              <div className="draft-actions">
                 <button className="primary" onClick={save} disabled={draft.polygon.length !== 4 || draft.lat === undefined || draft.lng === undefined}>Save</button>
                 <button className="ghost" onClick={() => setDraft(null)}>Cancel</button>
               </div>
             </div>
           )}
+          <div className="location-map-heading"><span className="field-label">STREET LOCATION</span><span>Click to place the stall</span></div>
           <MapContainer center={[cam.lat, cam.lng]} zoom={19} maxZoom={20} className="mini-map" key={cam._id}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxNativeZoom={19} maxZoom={20} />
             {draft && <MapPicker onPick={(lat, lng) => setDraft({ ...draft, lat, lng })} />}
@@ -165,13 +174,13 @@ export function Calibrate() {
               </CircleMarker>
             ))}
             {draft?.lat && (
-              <CircleMarker center={[draft.lat, draft.lng!]} radius={7} pathOptions={{ color: "#2563eb", fillColor: "#2563eb", fillOpacity: 1 }} />
+              <CircleMarker center={[draft.lat, draft.lng!]} radius={7} pathOptions={{ color: "#111111", fillColor: "#111111", fillOpacity: 1 }} />
             )}
           </MapContainer>
         </div>
 
-        <div className="card">
-          <h3>Stalls on this camera</h3>
+        <div className="card stall-inventory">
+          <div className="inventory-heading"><div><p className="eyebrow">STEP 02 · REVIEW</p><h2>Camera stalls</h2></div><span>{camStalls.length}</span></div>
           <ul className="stall-list">
             {camStalls.map((s) => (
               <li key={s._id}>
@@ -179,9 +188,9 @@ export function Calibrate() {
                 <span className="muted"> {s.status}</span>
                 <span className="actions">
                   <button className="ghost small" onClick={() => setDraft({ id: s._id, label: s.label, polygon: s.polygon, lat: s.lat, lng: s.lng })}>
-                    edit
+                    Edit
                   </button>
-                      <button className="ghost small danger" onClick={() => void removeStall(s._id)}>delete</button>
+                  <button className="ghost small danger" onClick={() => void removeStall(s._id)}>Delete</button>
                 </span>
               </li>
             ))}

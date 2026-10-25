@@ -109,7 +109,7 @@ export function VoiceAsk({
   return (
     <div className="voice">
       <form
-        className="find-row"
+        className="voice-form"
         onSubmit={(e) => {
           e.preventDefault();
           void submit(text);
@@ -122,14 +122,18 @@ export function VoiceAsk({
           disabled={!canRecord || (busy && !recording)}
           title={canRecord ? (recording ? "Stop and send" : "Speak your request") : "Microphone not available in this browser"}
         >
-          🎙
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="12" rx="3" />
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8" />
+          </svg>
         </button>
         <input
+          aria-label="Ask about parking near a place"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={recording ? "Listening… tap the mic to send" : 'Try "parking near this pin"'}
+          placeholder={recording ? "Listening… tap the mic to send" : "Ask about a place or street"}
         />
-        <button type="submit" className="ghost" disabled={busy || recording}>{busy ? "…" : "Ask"}</button>
+        <button type="submit" className="voice-submit" disabled={busy || recording}>{busy ? "…" : "Ask"}</button>
       </form>
       {reply && <p className="reply">“{reply}”</p>}
     </div>
