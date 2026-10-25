@@ -71,8 +71,13 @@ export const listCamerasNear = query({
   args: { lat: v.number(), lng: v.number() },
   handler: async (ctx, { lat, lng }) => {
     const pairs = await activeNearbyStalls(ctx, lat, lng, MAP_RADIUS_M);
-    const cameras = [...new Map(pairs.map(({ camera }) => [camera._id, camera])).values()];
-    return Promise.all(cameras.map((camera) => publicCamera(ctx, camera)));
+    const cameras = new Map(pairs.map(({ camera }) => [camera._id, camera]));
+    // Also list nearby cameras with no calibrated stalls yet, so their live view shows,
+    // after the ones with stalls. The camera table is small enough to scan.
+    const uncalibrated = (await ctx.db.query("cameras").collect())
+      .filter((c) => c.enabled !== false && !cameras.has(c._id) && withinRadius(lat, lng, c.lat, c.lng, MAP_RADIUS_M))
+      .sort((a, b) => distanceMeters(lat, lng, a.lat, a.lng) - distanceMeters(lat, lng, b.lat, b.lng));
+    return Promise.all([...cameras.values(), ...uncalibrated].map((camera) => publicCamera(ctx, camera)));
   },
 });
 
