@@ -24,9 +24,10 @@ Verified:
 - The running agent responds to local `GET /agent_info` with the demo address and port 8001.
 - AgentChatProtocol manifest publication and Almanac API registration succeed.
 - Nova confirmed that Chrome detects the local agent and enables the Inspector Connect button.
+- The running SDK reports: Successfully registered as mailbox agent in Agentverse.
 
 Not verified:
-- Agentverse mailbox association and inbound chat delivery.
+- Inbound Agent Chat Protocol message delivery through ASI:One.
 - The full parking workflow inside ASI:One, including a held spot and live camera-frame link.
 - Remote Rules Agent delivery. An unset `RULES_AGENT_ADDRESS` uses the in-process fallback.
 - Available Claude credits or the cost of a real parking request.

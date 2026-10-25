@@ -19,7 +19,7 @@ submission README. Fetch also asks for the `innovationlab` and `hackathon` badge
 ## Demo host
 
 Nova hosts the demo agent. See [the demo runbook](DEMO_RUNBOOK.md) for its stable public address,
-verified connection checks, pending mailbox setup, and restart instructions. Nathan's addresses above
+verified connection checks, pending ASI:One testing, and restart instructions. Nathan's addresses above
 remain development identities; do not reuse their seeds on a second host.
 
 ## Run
