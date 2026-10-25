@@ -11,6 +11,12 @@ class ParkSightError(Exception):
 
 def find_spot(text: str, lat: float, lng: float, session_id: str, post=None) -> dict:
     """Ask Convex for a held spot. `post(url, headers, body) -> (status, bytes)` is injectable for tests."""
+    mode = os.environ.get("PARKSIGHT_PARKING_MODE", "assistant").strip().lower()
+    if mode == "nearest":
+        from .nearest_client import find_nearest
+        return find_nearest(lat, lng, session_id, post=post)
+    if mode != "assistant":
+        raise ParkSightError("The parking selection mode isn't configured correctly.")
     site = os.environ.get("CONVEX_SITE_URL") or os.environ.get("VITE_CONVEX_SITE_URL", "")
     secret = os.environ.get("AGENT_SECRET", "")
     if not site or not secret:

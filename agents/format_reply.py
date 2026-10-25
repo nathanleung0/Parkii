@@ -33,7 +33,10 @@ def compose(result: dict, place_label: str, assumed: bool, rules: Optional[dict]
 
     links = []
     if result.get("frameUrl"):
-        links.append(f"[Latest camera frame]({result['frameUrl']})")
+        label = "Camera thumbnail (may lag)" if result.get("frameKind") == "thumbnail" else "Latest camera frame"
+        links.append(f"[{label}]({result['frameUrl']})")
+    if result.get("cameraUrl"):
+        links.append(f"[Live camera]({result['cameraUrl']})")
     links.append(f"[Directions]({directions_url(spot['lat'], spot['lng'])})")
     lines += ["", " · ".join(links)]
     return "\n".join(lines)
