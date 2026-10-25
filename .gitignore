@@ -14,3 +14,7 @@ agents/.venv
 agents/.env
 agents/.uagents
 *.pyc
+worker/models/
+worker/benchmarks/
+worker/.cache/
+.cache/
