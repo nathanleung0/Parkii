@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
-import L from "leaflet";
+import { Map as MapGL, Marker, NavigationControl } from "react-map-gl/maplibre";
 import { api } from "../convex/_generated/api";
 import { CameraFrame } from "./CameraFrame";
 import { VoiceAsk } from "./VoiceAsk";
 import {
   CASTRO_CENTER,
+  MAP_STYLE,
   STATUS_COLOR,
   ago,
   displayStatus,
@@ -14,14 +14,6 @@ import {
   useNow,
   type Stall,
 } from "./util";
-
-const youIcon = L.divIcon({ className: "you-pin", html: "<div></div>", iconSize: [18, 18] });
-const camIcon = L.divIcon({ className: "cam-pin", html: "📷", iconSize: [22, 22] });
-
-function ClickToMove({ onMove }: { onMove: (p: [number, number]) => void }) {
-  useMapEvents({ click: (e) => onMove([e.latlng.lat, e.latlng.lng]) });
-  return null;
-}
 
 export function DriverView() {
   const cameras = useQuery(api.parking.listCameras) ?? [];
@@ -74,26 +66,35 @@ export function DriverView() {
   return (
     <main className="driver">
       <section className="map-wrap">
-        <MapContainer center={CASTRO_CENTER} zoom={18} maxZoom={20} className="map">
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maxNativeZoom={19}
+        <div className="map">
+          <MapGL
+            initialViewState={{ latitude: CASTRO_CENTER[0], longitude: CASTRO_CENTER[1], zoom: 18 }}
             maxZoom={20}
-          />
-          <ClickToMove onMove={setYou} />
-          <Marker position={you} icon={youIcon}>
-            <Tooltip direction="top">You (click map to move)</Tooltip>
-          </Marker>
-          {cameras.map((c) => (
-            <Marker key={c._id} position={[c.lat, c.lng]} icon={camIcon} eventHandlers={{ click: () => setSelectedCam(c._id) }}>
-              <Tooltip direction="top">{c.name} · {ago(c.lastSeen, now)}</Tooltip>
+            mapStyle={MAP_STYLE}
+            onClick={(e) => setYou([e.lngLat.lat, e.lngLat.lng])}
+          >
+            <NavigationControl position="top-right" showCompass={false} />
+            <Marker latitude={you[0]} longitude={you[1]}>
+              <div className="you-pin" data-tip="You (click map to move)" />
             </Marker>
-          ))}
-          {stalls.map((s) => (
-            <StallDot key={s._id} s={s} now={now} session={session} active={spot?.stallId === s._id} onClick={() => setSelectedCam(s.cameraId)} />
-          ))}
-        </MapContainer>
+            {cameras.map((c) => (
+              <Marker
+                key={c._id}
+                latitude={c.lat}
+                longitude={c.lng}
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  setSelectedCam(c._id);
+                }}
+              >
+                <div className="cam-pin" data-tip={`${c.name} · ${ago(c.lastSeen, now)}`}>📷</div>
+              </Marker>
+            ))}
+            {stalls.map((s) => (
+              <StallDot key={s._id} s={s} now={now} session={session} active={spot?.stallId === s._id} onClick={() => setSelectedCam(s.cameraId)} />
+            ))}
+          </MapGL>
+        </div>
         <div className="legend">
           {(["open", "taken", "held", "stale"] as const).map((k) => (
             <span key={k}>
@@ -201,15 +202,19 @@ function mapsLink(p: { lat: number; lng: number }) {
 function StallDot({ s, now, session, active, onClick }: { s: Stall; now: number; session: string; active: boolean; onClick: () => void }) {
   const st = displayStatus(s, now, session);
   return (
-    <CircleMarker
-      center={[s.lat, s.lng]}
-      radius={active ? 11 : 8}
-      pathOptions={{ color: active ? "#1d4ed8" : "#fff", weight: active ? 4 : 2, fillColor: STATUS_COLOR[st], fillOpacity: 0.95 }}
-      eventHandlers={{ click: onClick }}
+    <Marker
+      latitude={s.lat}
+      longitude={s.lng}
+      onClick={(e) => {
+        e.originalEvent.stopPropagation();
+        onClick();
+      }}
     >
-      <Tooltip>
-        {s.label}: {st} · {ago(s.updatedAt, now)}
-      </Tooltip>
-    </CircleMarker>
+      <div
+        className={active ? "stall-dot active" : "stall-dot"}
+        style={{ background: STATUS_COLOR[st] }}
+        data-tip={`${s.label}: ${st} · ${ago(s.updatedAt, now)}`}
+      />
+    </Marker>
   );
 }

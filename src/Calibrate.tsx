@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
+import { Map as MapGL, Marker } from "react-map-gl/maplibre";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { CameraFrame } from "./CameraFrame";
-import { STATUS_COLOR, ago, displayStatus, sessionId, useNow } from "./util";
+import { MAP_STYLE, STATUS_COLOR, ago, displayStatus, sessionId, useNow } from "./util";
 
 type Draft = {
   id?: Id<"stalls">;
@@ -13,11 +13,6 @@ type Draft = {
   lat?: number;
   lng?: number;
 };
-
-function MapPicker({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({ click: (e) => onPick(e.latlng.lat, e.latlng.lng) });
-  return null;
-}
 
 export function Calibrate() {
   const cameras = useQuery(api.parking.listCameras) ?? [];
@@ -127,26 +122,29 @@ export function Calibrate() {
               </div>
             </div>
           )}
-          <MapContainer center={[cam.lat, cam.lng]} zoom={19} maxZoom={20} className="mini-map" key={cam._id}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxNativeZoom={19} maxZoom={20} />
-            {draft && <MapPicker onPick={(lat, lng) => setDraft({ ...draft, lat, lng })} />}
-            <CircleMarker center={[cam.lat, cam.lng]} radius={6} pathOptions={{ color: "#111", fillColor: "#111", fillOpacity: 1 }}>
-              <Tooltip>{cam.name}</Tooltip>
-            </CircleMarker>
-            {camStalls.map((s) => (
-              <CircleMarker
-                key={s._id}
-                center={[s.lat, s.lng]}
-                radius={6}
-                pathOptions={{ color: "#fff", weight: 2, fillColor: STATUS_COLOR[displayStatus(s, now, session)], fillOpacity: 1 }}
-              >
-                <Tooltip>{s.label}</Tooltip>
-              </CircleMarker>
-            ))}
-            {draft?.lat && (
-              <CircleMarker center={[draft.lat, draft.lng!]} radius={7} pathOptions={{ color: "#2563eb", fillColor: "#2563eb", fillOpacity: 1 }} />
-            )}
-          </MapContainer>
+          <div className="mini-map" key={cam._id}>
+            <MapGL
+              initialViewState={{ latitude: cam.lat, longitude: cam.lng, zoom: 19 }}
+              maxZoom={20}
+              mapStyle={MAP_STYLE}
+              attributionControl={{ compact: true }}
+              onClick={(e) => draft && setDraft({ ...draft, lat: e.lngLat.lat, lng: e.lngLat.lng })}
+            >
+              <Marker latitude={cam.lat} longitude={cam.lng}>
+                <div className="mini-dot" style={{ background: "#111", borderColor: "#111" }} data-tip={cam.name} />
+              </Marker>
+              {camStalls.map((s) => (
+                <Marker key={s._id} latitude={s.lat} longitude={s.lng}>
+                  <div className="mini-dot" style={{ background: STATUS_COLOR[displayStatus(s, now, session)] }} data-tip={s.label} />
+                </Marker>
+              ))}
+              {draft?.lat && (
+                <Marker latitude={draft.lat} longitude={draft.lng!}>
+                  <div className="mini-dot draft" />
+                </Marker>
+              )}
+            </MapGL>
+          </div>
         </div>
 
         <div className="card">
