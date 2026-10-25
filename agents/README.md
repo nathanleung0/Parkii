@@ -1,5 +1,7 @@
 # ParkSight agents (Fetch.ai)
 
+For an initial ASI:One check without parking requests, see [connection-only chat testing](CHAT_TESTING.md).
+
 Two uAgents that make ParkSight usable from **ASI:One chat** with no custom frontend.
 
 | Agent | File | What it does |
@@ -54,7 +56,7 @@ plain local endpoint (same-machine setups).
 ## Tests
 
 ```bash
-agents/.venv/Scripts/python -m unittest discover -s agents/tests -t .                  # 26 tests
+agents/.venv/Scripts/python -m unittest discover -s agents/tests -t .                  # 31 tests
 python -m unittest discover -s agents/providers/extract/tests -t .                     # 18 tests (from Vortex)
 python -m unittest discover -s agents/providers/retrieval/tests -t .                   # 17 tests (from Vortex)
 ```
@@ -64,11 +66,16 @@ python -m unittest discover -s agents/providers/retrieval/tests -t .            
 Verified here:
 - Chat handler end to end against the live local backend: geocode, held spot, real DataSF street-cleaning text, camera frame link, directions, acknowledgement plus end-session.
 - Both agents boot; the ParkSight Agent publishes its `AgentChatProtocol` manifest.
+- On Nova's demo host, an ASI:One message reached the local agent and returned the explicit
+  connection-only reply without requesting parking. A subsequent @mention-prefixed help
+  message returned the capability reply inside the same ASI:One conversation.
 - Convex `/agent/find`: 401 without secret, 400 on a bad body, two sessions get two different spots.
 
 Not verified:
-- **Chat inside ASI:One itself**: needs the Agentverse mailbox step above.
+- **Complete parking workflow inside ASI:One**: connection-only chat delivery is verified, but a real
+  parking request remains unverified pending confirmation of the team's backend credits.
 - **uAgent-to-uAgent delivery** (ParkSight Agent to Rules Agent): the local test timed out because Agentverse's registration API was timing out from this machine; the in-process fallback covers it.
 - **Apify crawl and Elastic search against real services**: adapters pass fake-transport unit tests only (inherited from Vortex).
-- **Camera frame links in replies** point at the local backend (`127.0.0.1`) until Convex is deployed to a cloud deployment.
+- **Public camera-frame links inside an ASI:One parking reply**: Nova's agent uses the cloud backend,
+  but a real parking reply and its frame link have not been verified.
 - Interactive Cards and the Payment Protocol (Fetch bonuses) are not built.
