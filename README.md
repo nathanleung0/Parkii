@@ -13,7 +13,7 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
 ## How it works
 
 1. **Frames:** `worker/sources.py` resolves each camera's YouTube Live HLS stream with `yt-dlp` and keeps it open in a background thread, so it always has the newest 720p frame. The fallback is the YouTube live thumbnail.
-2. **Detection:** `worker/poll.py` runs YOLO11s (cars, trucks, buses, motorcycles) on each frame every ~5 s. It POSTs the normalized vehicle boxes and a downscaled JPEG to Convex `/ingest`.
+2. **Detection:** `worker/poll.py` runs YOLO26m (cars, trucks, buses, motorcycles) on each frame, targeting a 5 s camera cycle. The cycle takes longer if inference or camera capture is slow. It POSTs the same normalized vehicle boxes and a downscaled JPEG to Convex `/ingest`. YOLO11s is still selectable as a baseline; the new model's parking accuracy must be measured on labeled camera footage. See [worker setup and comparison](worker/README.md).
 3. **Occupancy (in Convex):** `convex/ingest.ts` takes each vehicle's **ground footprint** (bottom 35% of its box) and checks how much falls inside each stall polygon (≥ 40% means occupied). Majority vote over the last 3 readings gives the status and a confidence score.
    - Why footprints: on an oblique camera, cars driving in the next lane overlap the curb stalls in image space. Tuned on Cam 1, parked cars score 0.6–0.8 and passing traffic scores 0–0.1. Whole-box overlap scored passing traffic at 0.24–0.38, causing false "taken" readings.
 4. **Real-time state:** Convex pushes stall changes to every open client. `findSpot` picks the nearest fresh, open stall that isn't held by another driver, and holds it for 3 minutes, all in one transaction. So two drivers never get sent to the same spot.
@@ -36,6 +36,8 @@ npx convex env set AGENT_SECRET <any random string; same value goes in agents/.e
 npx convex run seed:castro         # once: cameras + starter stalls
 
 python -m venv worker/.venv
+# NVIDIA GPU, Windows/Linux (CPU/macOS: see worker/README.md):
+worker/.venv/Scripts/python -m pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cu128
 worker/.venv/Scripts/pip install -r worker/requirements.txt     # (bin/ on mac/linux)
 worker/.venv/Scripts/python worker/poll.py                      # terminal 2
 
@@ -50,6 +52,8 @@ npx convex env set CARTESIA_VOICE_ID <voice id>   # optional
 ```
 
 Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), `--record DIR` / `--replay DIR` (record live frames, replay them later, e.g. for a demo at night), `--only castro-cam1`, `--interval 5`.
+
+Vision flags: `--model yolo26m.pt` (default), `--model yolo11s.pt` (previous baseline), `--device auto|cpu|0`, `--imgsz 1280`, `--half` (CUDA only), and experimental `--parking-roi`. Compare saved footage without Convex using `python worker/benchmark.py --frames worker/recordings --annotate`. See [worker/README.md](worker/README.md) for labels, metrics and limitations.
 
 `yt-dlp` needs a JavaScript runtime for YouTube; it uses Node, which `sources.py` finds automatically.
 
