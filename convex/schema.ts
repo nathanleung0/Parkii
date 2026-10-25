@@ -8,6 +8,9 @@ export default defineSchema({
     camId: v.string(),
     name: v.string(),
     youtubeId: v.string(),
+    // When set, the worker follows the channel's current live stream, since
+    // the video ID changes whenever the channel restarts its broadcast.
+    channelId: v.optional(v.string()),
     lat: v.number(),
     lng: v.number(),
     heading: v.number(), // degrees, 0 = north

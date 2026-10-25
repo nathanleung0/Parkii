@@ -12,6 +12,16 @@ import requests
 
 HLS_TTL_S = 60 * 60  # googlevideo URLs last ~6h; refresh hourly to be safe
 _hls_cache: dict[str, tuple[str, float]] = {}
+_live_ids: dict[str, str] = {}  # source -> video ID it last resolved to
+
+# A source is either a video ID or a channel ID (UC...). Channels resolve to
+# whatever they are broadcasting now, so restarted streams are picked up.
+
+
+def _watch_url(source: str) -> str:
+    if source.startswith("UC") and len(source) == 24:
+        return f"https://www.youtube.com/channel/{source}/live"
+    return f"https://www.youtube.com/watch?v={source}"
 
 
 def _env_with_node() -> dict:
@@ -21,33 +31,39 @@ def _env_with_node() -> dict:
     return env
 
 
-def resolve_hls(youtube_id: str) -> str | None:
-    cached = _hls_cache.get(youtube_id)
+def resolve_hls(source: str) -> str | None:
+    cached = _hls_cache.get(source)
     if cached and time.time() - cached[1] < HLS_TTL_S:
         return cached[0]
     cmd = [
-        sys.executable, "-m", "yt_dlp", "--js-runtimes", "node", "-g",
+        sys.executable, "-m", "yt_dlp", "--js-runtimes", "node",
+        "--print", "id", "--print", "urls",
         "-f", "232/best[height<=720]/best",
-        f"https://www.youtube.com/watch?v={youtube_id}",
+        _watch_url(source),
     ]
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=_env_with_node())
     except subprocess.TimeoutExpired:
         return None
-    url = out.stdout.strip().splitlines()[0] if out.returncode == 0 and out.stdout.strip() else None
-    if url:
-        _hls_cache[youtube_id] = (url, time.time())
-    else:
-        print(f"[sources] yt-dlp failed for {youtube_id}: {out.stderr.strip()[-200:]}")
+    lines = out.stdout.strip().splitlines() if out.returncode == 0 else []
+    if len(lines) < 2:
+        print(f"[sources] yt-dlp failed for {source}: {out.stderr.strip()[-200:]}")
+        return None
+    video_id, url = lines[0], lines[1]
+    if _live_ids.get(source) != video_id:
+        if source != video_id:
+            print(f"[sources] {source} is live as {video_id}")
+        _live_ids[source] = video_id
+    _hls_cache[source] = (url, time.time())
     return url
 
 
 class LiveReader(threading.Thread):
     """Keeps an HLS stream open and always holds the newest decoded frame."""
 
-    def __init__(self, youtube_id: str):
+    def __init__(self, source: str):
         super().__init__(daemon=True)
-        self.youtube_id = youtube_id
+        self.source = source
         self.frame: np.ndarray | None = None
         self.frame_ts = 0.0
         self.lock = threading.Lock()
@@ -60,7 +76,7 @@ class LiveReader(threading.Thread):
 
     def run(self):
         while True:
-            url = resolve_hls(self.youtube_id)
+            url = resolve_hls(self.source)
             if not url:
                 time.sleep(30)
                 continue
@@ -76,17 +92,17 @@ class LiveReader(threading.Thread):
                 with self.lock:
                     self.frame, self.frame_ts = frame, time.time()
             cap.release()
-            _hls_cache.pop(self.youtube_id, None)  # stream ended or URL expired: re-resolve
-            print(f"[sources] reconnecting {self.youtube_id}")
+            _hls_cache.pop(self.source, None)  # stream ended or URL expired: re-resolve
+            print(f"[sources] reconnecting {self.source}")
 
 
 _readers: dict[str, LiveReader] = {}
 
 
-def grab_hls(youtube_id: str, wait_s: float = 30.0) -> np.ndarray | None:
-    reader = _readers.get(youtube_id)
+def grab_hls(source: str, wait_s: float = 30.0) -> np.ndarray | None:
+    reader = _readers.get(source)
     if reader is None:
-        reader = _readers[youtube_id] = LiveReader(youtube_id)
+        reader = _readers[source] = LiveReader(source)
         reader.start()
     deadline = time.time() + wait_s
     while True:
@@ -104,8 +120,9 @@ def grab_thumbnail(youtube_id: str) -> np.ndarray | None:
     return cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
 
 
-def grab_frame(youtube_id: str) -> tuple[np.ndarray | None, str]:
-    frame = grab_hls(youtube_id)
+def grab_frame(youtube_id: str, channel_id: str | None = None) -> tuple[np.ndarray | None, str]:
+    source = channel_id or youtube_id
+    frame = grab_hls(source)
     if frame is not None:
         return frame, "hls"
-    return grab_thumbnail(youtube_id), "thumbnail"
+    return grab_thumbnail(_live_ids.get(source, youtube_id)), "thumbnail"
