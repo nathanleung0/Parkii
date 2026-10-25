@@ -25,7 +25,7 @@ def render(args):
     by_camera = {c["camId"]: c for c in cameras}
     profiles = list(dict.fromkeys(["baseline-yolo11s", args.profile]))
     for profile in profiles:
-        detector = detector_for(VisionConfig(**PROFILES[profile], device="cpu", conf=.25))
+        detector = detector_for(VisionConfig(**PROFILES[profile], device="cpu", conf=.25 if profile=="baseline-yolo11s" else args.conf))
         detector.torch.set_num_threads(4)
         for cam_id, row in sorted(latest.items()):
             path = root / "frames" / row["frame"]
@@ -44,7 +44,7 @@ def render(args):
                 font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 17)
             except OSError:
                 font = ImageFont.load_default()
-            draw.text((12,8), f"{cam_id} | {profile} | {len(boxes)} vehicle boxes",font=font,fill="white")
+            draw.text((12,8), f"{cam_id} | {profile} conf={detector.config.conf} | {len(boxes)} vehicle boxes",font=font,fill="white")
             draw.text((12,34), "Orange: vehicle boxes. Cyan: existing calibration. Vacancy is NOT verified.",font=font,fill="white")
             for x1,y1,x2,y2,score in boxes:
                 draw.rectangle((x1*w,y1*h+66,x2*w,y2*h+66),outline="#ffad33",width=2)
@@ -67,4 +67,5 @@ if __name__ == "__main__":
     parser.add_argument("--capture",default="worker/recordings/evaluation")
     parser.add_argument("--output",default="worker/benchmarks/camera-review")
     parser.add_argument("--profile",required=True)
+    parser.add_argument("--conf",type=float,default=.25)
     render(parser.parse_args())

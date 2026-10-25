@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "dataset": "COCO val2017 vehicle-family slice",
+  "created_at": "2026-10-25T04:09:14.801078+00:00",
+  "task": "pooled vehicle-family detection at IoU >= 0.5",
+  "dataset_manifest_sha256": "df3db5eee5f698482d53e0539f320261c47e0e4434f34a2eac54e57d2a7c9f68",
+  "scope": "one fresh confirmation, not Castro parking-availability accuracy",
+  "pilot_report_sha256": "5d63c81d129cf73395a6754b0ae465d60fe244a6d4f3e2114d60931f39df3d81",
+  "calibration": {
+    "created_at": "2026-10-25T04:09:14.801078+00:00",
+    "threshold": 0.45,
+    "rule": "six fixed thresholds; highest pilot validation F1, higher threshold for exact tie",
+    "sweep": [
+      {
+        "threshold": 0.25,
+        "metrics": {
+          "tp": 27,
+          "fp": 14,
+          "fn": 4,
+          "ignored_crowd": 0,
+          "images": 16,
+          "precision": 0.6585365853658537,
+          "recall": 0.8709677419354839,
+          "f1": 0.75,
+          "false_positives_per_image": 0.875
+        }
+      },
+      {
+        "threshold": 0.35,
+        "metrics": {
+          "tp": 26,
+          "fp": 5,
+          "fn": 5,
+          "ignored_crowd": 0,
+          "images": 16,
+          "precision": 0.8387096774193549,
+          "recall": 0.8387096774193549,
+          "f1": 0.8387096774193549,
+          "false_positives_per_image": 0.3125
+        }
+      },
+      {
+        "threshold": 0.45,
+        "metrics": {
+          "tp": 25,
+          "fp": 3,
+          "fn": 6,
+          "ignored_crowd": 0,
+          "images": 16,
+          "precision": 0.8928571428571429,
+          "recall": 0.8064516129032258,
+          "f1": 0.847457627118644,
+          "false_positives_per_image": 0.1875
+        }
+      },
+      {
+        "threshold": 0.55,
+        "metrics": {
+          "tp": 21,
+          "fp": 0,
+          "fn": 10,
+          "ignored_crowd": 0,
+          "images": 16,
+          "precision": 1.0,
+          "recall": 0.6774193548387096,
+          "f1": 0.8076923076923077,
+          "false_positives_per_image": 0.0
+        }
+      },
+      {
+        "threshold": 0.65,
+        "metrics": {
+          "tp": 21,
+          "fp": 0,
+          "fn": 10,
+          "ignored_crowd": 0,
+          "images": 16,
+          "precision": 1.0,
+          "recall": 0.6774193548387096,
+          "f1": 0.8076923076923077,
+          "false_positives_per_image": 0.0
+        }
+      },
+      {
+        "threshold": 0.75,
+        "metrics": {
+          "tp": 19,
+          "fp": 0,
+          "fn": 12,
+          "ignored_crowd": 0,
+          "images": 16,
+          "precision": 1.0,
+          "recall": 0.6129032258064516,
+          "f1": 0.76,
+          "false_positives_per_image": 0.0
+        }
+      }
+    ],
+    "pilot_validation_predictions_sha256": "1b9852749f17ca38ea15fbdf56fca45c77552cada53d618c7b176eeeb6583133",
+    "note": "Pilot test failed overall F1. Its images are excluded from confirmation; no test-based threshold tuning."
+  },
+  "test": [
+    {
+      "profile": "baseline-yolo11s",
+      "split": "test",
+      "config": {
+        "model": "yolo11s.pt",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "device": "cpu",
+        "half": false,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "runtime": {
+        "model": "yolo11s.pt",
+        "device": "cpu",
+        "cpu_threads": 4,
+        "gpu": null,
+        "torch": "2.10.0+cpu",
+        "half": false,
+        "ultralytics": "8.4.188",
+        "weights_sha256": "85a76fe86dd8afe384648546b56a7a78580c7cb7b404fc595f97969322d502d5",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "metrics": {
+        "tp": 131,
+        "fp": 21,
+        "fn": 36,
+        "ignored_crowd": 12,
+        "images": 48,
+        "precision": 0.8618421052631579,
+        "recall": 0.7844311377245509,
+        "f1": 0.8213166144200627,
+        "false_positives_per_image": 0.4375
+      },
+      "latency_ms": {
+        "median": 1058.235349948518,
+        "p95": 1179.5156000880525
+      },
+      "predictions_file": "test-baseline-yolo11s.json"
+    },
+    {
+      "profile": "rfdetr-small-calibrated",
+      "split": "test",
+      "config": {
+        "model": "rfdetr-small",
+        "imgsz": 512,
+        "conf": 0.45,
+        "device": "cpu",
+        "half": false,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "runtime": {
+        "framework": "rfdetr",
+        "version": "1.11.2",
+        "weights": "rf-detr-small.pth",
+        "weights_sha256": "d81979a9213a2109345158ce9232668df4c1ae52e9b8db3f2ec0a8cbad959b33",
+        "device": "cpu",
+        "official_registry_md5_verified": true,
+        "torch": "2.10.0+cpu",
+        "cpu_threads": 4
+      },
+      "metrics": {
+        "tp": 112,
+        "fp": 4,
+        "fn": 55,
+        "ignored_crowd": 2,
+        "images": 48,
+        "precision": 0.9655172413793104,
+        "recall": 0.6706586826347305,
+        "f1": 0.7915194346289752,
+        "false_positives_per_image": 0.08333333333333333
+      },
+      "latency_ms": {
+        "median": 961.0306500107981,
+        "p95": 1008.3004999905825
+      },
+      "predictions_file": "test-rfdetr-small-calibrated.json"
+    }
+  ],
+  "improvement": {
+    "f1_pp": -2.9797179791087425,
+    "recall_pp": -11.377245508982037,
+    "precision_pp": 10.367513611615253,
+    "miss_reduction_fraction": -0.5277777777777778,
+    "f1_difference_interval": {
+      "low_pp": -7.838408200180891,
+      "high_pp": 1.6529830322933758,
+      "method": "paired image bootstrap, exploratory subset",
+      "iterations": 2000
+    }
+  }
+}

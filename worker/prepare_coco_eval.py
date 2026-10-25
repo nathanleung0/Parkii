@@ -79,8 +79,12 @@ def prepare(args):
     for annotation in annotations["annotations"]:
         if annotation["category_id"] in VEHICLES:
             grouped[annotation["image_id"]].append(annotation)
-    positive = sorted(i for i in images if 1 <= sum(not a.get("iscrowd", 0) for a in grouped[i]) <= 30)
-    negative = sorted(i for i in images if not grouped[i])
+    excluded = set()
+    if getattr(args,"exclude_manifest",None):
+        previous=json.loads(Path(args.exclude_manifest).read_text(encoding="utf-8"))
+        excluded={row["image_id"] for row in previous["images"]}
+    positive = sorted(i for i in images if i not in excluded and 1 <= sum(not a.get("iscrowd", 0) for a in grouped[i]) <= 30)
+    negative = sorted(i for i in images if i not in excluded and not grouped[i])
     rng = random.Random(args.seed)
     rng.shuffle(positive)
     rng.shuffle(negative)
@@ -114,14 +118,14 @@ def prepare(args):
             row = [x/image["width"], y/image["height"], (x+w)/image["width"], (y+h)/image["height"]]
             (crowd if annotation.get("iscrowd",0) else boxes).append(row)
         return {"image_id": image_id, "frame": name, "width": image["width"], "height": image["height"],
-                "split": "validation" if image_id in validation_ids else "test", "boxes": boxes, "crowd": crowd,
+                "split": "validation" if image_id in validation_ids and not getattr(args,"test_only",False) else "test", "boxes": boxes, "crowd": crowd,
                 "sha256": hashlib.sha256(raw).hexdigest(), "license_id": image.get("license")}
     with ThreadPoolExecutor(max_workers=4) as pool:
         rows = list(pool.map(fetch, chosen))
     manifest = {"dataset": "COCO val2017 vehicle-family slice", "seed": args.seed,
                 "annotation_source": ANNOTATIONS, "annotation_sha256": hashlib.sha256(annotations_path.read_bytes()).hexdigest(),
                 "label_source": "official COCO human annotations, not model predictions",
-                "category_ids": sorted(VEHICLES), "licenses": annotations.get("licenses",[]),
+                "excluded_image_ids": sorted(excluded), "category_ids": sorted(VEHICLES), "licenses": annotations.get("licenses",[]),
                 "caveat": "Generic vehicle detection benchmark; not a measured Castro empty-parking accuracy gain.",
                 "images": sorted(rows,key=lambda row:row["frame"])}
     (root / "manifest.json").write_text(json.dumps(manifest,indent=2)+"\n",encoding="utf-8")
@@ -133,6 +137,8 @@ if __name__ == "__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",default="worker/recordings/coco-vehicles")
     parser.add_argument("--count",type=int,default=48)
+    parser.add_argument("--exclude-manifest", help="exclude all previously evaluated image IDs")
+    parser.add_argument("--test-only", action="store_true", help="reserve all new images for a frozen confirmation test")
     parser.add_argument("--seed",type=int,default=20261024)
     args=parser.parse_args()
     if args.count < 12 or args.count % 12 or args.count > 240:

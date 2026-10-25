@@ -1,0 +1,249 @@
+{
+  "selected_profile": "rfdetr-small",
+  "selection_rule": "highest validation F1, lower median latency for an exact tie",
+  "selection_frozen_before_test_at": "2026-10-25T04:05:48.182613+00:00",
+  "validation": [
+    {
+      "profile": "baseline-yolo11s",
+      "split": "validation",
+      "config": {
+        "model": "yolo11s.pt",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "device": "cpu",
+        "half": false,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "runtime": {
+        "model": "yolo11s.pt",
+        "device": "cpu",
+        "gpu": null,
+        "torch": "2.10.0+cpu",
+        "half": false,
+        "ultralytics": "8.4.188",
+        "weights_sha256": "85a76fe86dd8afe384648546b56a7a78580c7cb7b404fc595f97969322d502d5",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "metrics": {
+        "tp": 20,
+        "fp": 10,
+        "fn": 11,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.6666666666666666,
+        "recall": 0.6451612903225806,
+        "f1": 0.6557377049180327,
+        "false_positives_per_image": 0.625
+      },
+      "latency_ms": {
+        "median": 1024.0854999865405,
+        "p95": 1377.2237999364734
+      },
+      "predictions_file": "validation-baseline-yolo11s.json"
+    },
+    {
+      "profile": "yolo26m",
+      "split": "validation",
+      "config": {
+        "model": "yolo26m.pt",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "device": "cpu",
+        "half": false,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "runtime": {
+        "model": "yolo26m.pt",
+        "device": "cpu",
+        "gpu": null,
+        "torch": "2.10.0+cpu",
+        "half": false,
+        "ultralytics": "8.4.188",
+        "weights_sha256": "401cea9ab23ad19246ff7744859816bc599f350e93c9dd30367b6f0a0745d0b7",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "metrics": {
+        "tp": 19,
+        "fp": 10,
+        "fn": 12,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.6551724137931034,
+        "recall": 0.6129032258064516,
+        "f1": 0.6333333333333333,
+        "false_positives_per_image": 0.625
+      },
+      "latency_ms": {
+        "median": 2483.1671000574715,
+        "p95": 311537.7854000544
+      },
+      "predictions_file": "validation-yolo26m.json"
+    },
+    {
+      "profile": "yolo26s-tiled",
+      "split": "validation",
+      "config": {
+        "model": "yolo26s.pt",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "device": "cpu",
+        "half": false,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 320,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "runtime": {
+        "model": "yolo26s.pt",
+        "device": "cpu",
+        "gpu": null,
+        "torch": "2.10.0+cpu",
+        "half": false,
+        "ultralytics": "8.4.188",
+        "weights_sha256": "646f8bc3fe0a656803d95c294f7852321748cb29d13466a1af8862e2db384a1b",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 320,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "metrics": {
+        "tp": 23,
+        "fp": 34,
+        "fn": 8,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.40350877192982454,
+        "recall": 0.7419354838709677,
+        "f1": 0.5227272727272727,
+        "false_positives_per_image": 2.125
+      },
+      "latency_ms": {
+        "median": 9691.422899952158,
+        "p95": 27464.891999959946
+      },
+      "predictions_file": "validation-yolo26s-tiled.json"
+    },
+    {
+      "profile": "yolo26m-seg",
+      "split": "validation",
+      "config": {
+        "model": "yolo26m-seg.pt",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "device": "cpu",
+        "half": false,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "runtime": {
+        "model": "yolo26m-seg.pt",
+        "device": "cpu",
+        "gpu": null,
+        "torch": "2.10.0+cpu",
+        "half": false,
+        "ultralytics": "8.4.188",
+        "weights_sha256": "16b636f04e8fb6a325b3370f22dc5e5535ff473e384f4d041fd28d788f6ee9f5",
+        "imgsz": 1280,
+        "conf": 0.25,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "metrics": {
+        "tp": 22,
+        "fp": 17,
+        "fn": 9,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.5641025641025641,
+        "recall": 0.7096774193548387,
+        "f1": 0.6285714285714286,
+        "false_positives_per_image": 1.0625
+      },
+      "latency_ms": {
+        "median": 3762.6671000616625,
+        "p95": 5077.844099956565
+      },
+      "predictions_file": "validation-yolo26m-seg.json"
+    },
+    {
+      "profile": "rfdetr-small",
+      "split": "validation",
+      "config": {
+        "model": "rfdetr-small",
+        "imgsz": 512,
+        "conf": 0.25,
+        "device": "cpu",
+        "half": false,
+        "parking_roi": false,
+        "roi_margin": 0.15,
+        "tile_size": 0,
+        "tile_overlap": 0.25,
+        "tile_limit": 16,
+        "merge_iou": 0.55
+      },
+      "runtime": {
+        "framework": "rfdetr",
+        "version": "1.11.2",
+        "weights": "rf-detr-small.pth",
+        "weights_sha256": "d81979a9213a2109345158ce9232668df4c1ae52e9b8db3f2ec0a8cbad959b33",
+        "device": "cpu",
+        "torch": "2.10.0+cpu",
+        "cpu_threads": 4
+      },
+      "metrics": {
+        "tp": 27,
+        "fp": 14,
+        "fn": 4,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.6585365853658537,
+        "recall": 0.8709677419354839,
+        "f1": 0.75,
+        "false_positives_per_image": 0.875
+      },
+      "latency_ms": {
+        "median": 975.4975000396371,
+        "p95": 1045.4798999708146
+      },
+      "predictions_file": "validation-rfdetr-small.json"
+    }
+  ]
+}

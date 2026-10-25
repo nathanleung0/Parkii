@@ -129,6 +129,24 @@ class WorkerSafetyTest(unittest.TestCase):
         self.assertEqual(worker.detect.call_count,2)
         self.assertIn("c",worker.last_hash)
 
+    def test_failed_upload_preserves_retry_and_preview_state(self):
+        module=self.worker_module()
+        worker=module.Worker.__new__(module.Worker)
+        frame=Mock()
+        frame.__getitem__=Mock(return_value=SimpleNamespace(tobytes=lambda:b"same-frame"))
+        worker.next_frame=lambda cam:(frame,"test-fixture")
+        worker.args=SimpleNamespace(replay=None,record=None,debug=False,dry_run=False,preview_interval=60)
+        worker.last_hash,worker.last_preview={},{}
+        worker.detect=Mock(return_value=[])
+        worker.push=Mock(side_effect=[RuntimeError("failed upload"),{}])
+        with patch("builtins.print"):
+            with self.assertRaises(RuntimeError): worker.step({"camId":"c"})
+            self.assertEqual(worker.last_hash,{})
+            self.assertEqual(worker.last_preview,{})
+            worker.step({"camId":"c"})
+        self.assertEqual(worker.push.call_count,2)
+        self.assertIn("c",worker.last_hash)
+
     def test_offline_calibration_never_requests_backend_and_cannot_be_published(self):
         module=self.worker_module()
         with tempfile.TemporaryDirectory() as temp:

@@ -33,7 +33,7 @@ def run_profile(name,split,manifest,root,output):
     rows=[row for row in manifest["images"] if row["split"]==split]
     if not rows:
         raise ValueError("Requested split has no images")
-    config=VisionConfig(**PROFILES[name],device="cpu",conf=.25)
+    config=VisionConfig(**{"device":"cpu","conf":.25,**PROFILES[name]})
     detector=detector_for(config)
     first=cv2.imread(str(root/"frames"/rows[0]["frame"]))
     for _ in range(2):

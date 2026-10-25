@@ -1,0 +1,59 @@
+{
+  "scope": "geometry diagnostics only; no automatic parking labels or safety certification",
+  "stalls": [
+    {
+      "camera_id": "castro-cam1",
+      "stall": "C1-1",
+      "warnings": [],
+      "visual_review_required": true
+    },
+    {
+      "camera_id": "castro-cam1",
+      "stall": "C1-2",
+      "warnings": [],
+      "visual_review_required": true
+    },
+    {
+      "camera_id": "castro-cam1",
+      "stall": "C1-3",
+      "warnings": [],
+      "visual_review_required": true
+    },
+    {
+      "camera_id": "castro-cam1",
+      "stall": "C1-4",
+      "warnings": [],
+      "visual_review_required": true
+    },
+    {
+      "camera_id": "castro-cam5",
+      "stall": "C5-1",
+      "warnings": [],
+      "visual_review_required": true
+    },
+    {
+      "camera_id": "castro-cam5",
+      "stall": "C5-2",
+      "warnings": [
+        "touches_frame_edge"
+      ],
+      "visual_review_required": true
+    },
+    {
+      "camera_id": "castro-cam2",
+      "stall": "C2-1",
+      "warnings": [
+        "touches_frame_edge"
+      ],
+      "visual_review_required": true
+    },
+    {
+      "camera_id": "castro-cam2",
+      "stall": "C2-2",
+      "warnings": [],
+      "visual_review_required": true
+    }
+  ],
+  "total": 8,
+  "with_geometry_warnings": 2
+}

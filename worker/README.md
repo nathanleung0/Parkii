@@ -192,7 +192,7 @@ Ultralytics and RF-DETR have different licenses; review each before distribution
 ```powershell
 worker/.venv/Scripts/python worker/capture_eval.py --origin https://YOUR-DEPLOYMENT.convex.cloud
 worker/.venv/Scripts/python worker/calibration_audit.py --cameras worker/recordings/evaluation/cameras.json --output worker/benchmarks/calibration-audit.json
-worker/.venv/Scripts/python worker/review_cameras.py --profile rfdetr-small
+worker/.venv/Scripts/python worker/review_cameras.py --profile rfdetr-small --conf .45
 worker/.venv/Scripts/python worker/poll.py --replay worker/recordings/evaluation/frames --cameras-file worker/recordings/evaluation/cameras.json --dry-run --once --debug --device cpu
 ```
 
@@ -212,3 +212,24 @@ frame can be retried. Shared server freshness/occupancy behavior is unchanged.
 
 - [Official RF-DETR repository and licenses](https://github.com/roboflow/rf-detr)
 - [Official COCO dataset](https://cocodataset.org/dataset/detection-2017.htm)
+
+## Fresh confirmation after threshold calibration
+
+The initial fixed-0.25 pilot failed on overall held-out F1; it is retained in the
+report. A second, explicitly documented phase calibrates RF-DETR on the original
+16 validation images at exactly six thresholds: 0.25, 0.35, 0.45, 0.55, 0.65,
+and 0.75. The best validation F1 freezes the threshold before any fresh test
+inference. A new 48-image confirmation excludes every one of the 48 pilot image
+IDs. There is one confirmation attempt; its results must not be reused to tune.
+The new manifest contains all test images, with no additional validation split.
+
+```powershell
+worker/.venv/Scripts/python worker/prepare_coco_eval.py --output worker/recordings/coco-confirmation --seed 20261025 --count 48 --test-only --exclude-manifest worker/recordings/coco-vehicles/manifest.json
+worker/.venv/Scripts/python worker/confirm_detector.py
+# Explicit calibrated worker configuration; review real camera output first:
+worker/.venv/Scripts/python worker/poll.py --model rfdetr-small --imgsz 512 --conf .45 --device cpu --replay worker/recordings/evaluation/frames --cameras-file worker/recordings/evaluation/cameras.json --dry-run --once --debug
+```
+
+A confidence threshold is not a measured parking-availability probability. The
+retained default remains YOLO11s because generic vehicle scores do not validate
+curb legality, occluded stalls, or the server's temporal vacancy decision.

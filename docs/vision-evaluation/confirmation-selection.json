@@ -1,0 +1,93 @@
+{
+  "created_at": "2026-10-25T04:09:14.801078+00:00",
+  "threshold": 0.45,
+  "rule": "six fixed thresholds; highest pilot validation F1, higher threshold for exact tie",
+  "sweep": [
+    {
+      "threshold": 0.25,
+      "metrics": {
+        "tp": 27,
+        "fp": 14,
+        "fn": 4,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.6585365853658537,
+        "recall": 0.8709677419354839,
+        "f1": 0.75,
+        "false_positives_per_image": 0.875
+      }
+    },
+    {
+      "threshold": 0.35,
+      "metrics": {
+        "tp": 26,
+        "fp": 5,
+        "fn": 5,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.8387096774193549,
+        "recall": 0.8387096774193549,
+        "f1": 0.8387096774193549,
+        "false_positives_per_image": 0.3125
+      }
+    },
+    {
+      "threshold": 0.45,
+      "metrics": {
+        "tp": 25,
+        "fp": 3,
+        "fn": 6,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 0.8928571428571429,
+        "recall": 0.8064516129032258,
+        "f1": 0.847457627118644,
+        "false_positives_per_image": 0.1875
+      }
+    },
+    {
+      "threshold": 0.55,
+      "metrics": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 10,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 1.0,
+        "recall": 0.6774193548387096,
+        "f1": 0.8076923076923077,
+        "false_positives_per_image": 0.0
+      }
+    },
+    {
+      "threshold": 0.65,
+      "metrics": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 10,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 1.0,
+        "recall": 0.6774193548387096,
+        "f1": 0.8076923076923077,
+        "false_positives_per_image": 0.0
+      }
+    },
+    {
+      "threshold": 0.75,
+      "metrics": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 12,
+        "ignored_crowd": 0,
+        "images": 16,
+        "precision": 1.0,
+        "recall": 0.6129032258064516,
+        "f1": 0.76,
+        "false_positives_per_image": 0.0
+      }
+    }
+  ],
+  "pilot_validation_predictions_sha256": "1b9852749f17ca38ea15fbdf56fca45c77552cada53d618c7b176eeeb6583133",
+  "note": "Pilot test failed overall F1. Its images are excluded from confirmation; no test-based threshold tuning."
+}
