@@ -39,16 +39,24 @@ Status is as of commit `0bdc3d8` (Sat 3:39 PM). Most features are **built**; wha
 
 ## Nova: ASI:One / Fetch.ai agent, live
 
-**State:** `agents/parksight_agent.py` is built and its chat handler works against the local backend. It hasn't run inside ASI:One yet. Fetch's mandatory list needs the whole flow inside ASI:One chat.
+**State (Nova host, 24 October 2026):** the agent is connected to Agentverse and
+verified live inside ASI:One. The current demo uses explicit nearest-spot mode
+without an LLM. The full historical held-spot/rules/directions reply and the latest
+no-availability check are documented in [the demo runbook](../agents/DEMO_RUNBOOK.md).
 
-1. Once the cloud deployment exists, set `CONVEX_SITE_URL` and `AGENT_SECRET` in `agents/.env`.
-2. Run the agent, open the inspector link it prints, then **Connect → Mailbox** on Agentverse.
-3. In **ASI:One**, ask "find me parking near the Castro Theatre." The reply should show the spot, freshness, the street-cleaning warning, the camera frame link and a directions link.
-4. Decide who hosts the demo agent and keep one seed, so the address stays fixed. Give Andrew the address for the README.
-5. Record the 3–5 minute Fetch demo video showing the full flow inside ASI:One.
-6. **Stretch:** Interactive Cards (Hold / Find another / Navigate), then the Payment Protocol (e.g. pay to extend a hold).
+1. Cloud configuration, stable seed, one demo host, mailbox connection and ACP
+   registration are complete on Nova's computer.
+2. ASI:One help and real Convex parking requests are verified. A held-spot reply
+   was observed earlier; availability depends on the current calibrated camera data.
+3. Andrew can use the stable public agent address in the runbook and root README.
+4. **Remaining:** record the actual 3–5 minute Fetch demo and give Andrew its link.
+   A fresh successful recording needs an eligible real spot or a visibly labeled replay;
+   do not force occupied stalls open or present an old reply as a current reading.
+5. Remote Rules-Agent messaging, Claude-in-ASI, Elastic and Apify are not marked
+   verified by the nearest-mode evidence. Interactive Cards and payment remain stretch.
 
-**Done when:** a stranger can find the agent in ASI:One and get a held spot without opening our web app.
+**Done when:** a stranger can reach the stable agent in ASI:One and the submitted
+video shows the primary parking workflow with honest data/source limitations.
 
 ## Josh: voice, live
 
