@@ -84,4 +84,63 @@ http.route({
   }),
 });
 
+// Only recently selected NYC camera previews enter this bounded analysis queue.
+http.route({
+  path: "/nyc-analysis-queue",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    const secret = process.env.INGEST_SECRET;
+    if (!secret || req.headers.get("x-ingest-secret") !== secret) {
+      return new Response("unauthorized", { status: 401 });
+    }
+    return Response.json(await ctx.runQuery(internal.nycCameras.analysisQueue, {}));
+  }),
+});
+
+http.route({
+  path: "/nyc-observation",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const secret = process.env.INGEST_SECRET;
+    if (!secret || req.headers.get("x-ingest-secret") !== secret) {
+      return new Response("unauthorized", { status: 401 });
+    }
+    if (Number(req.headers.get("content-length") ?? 0) > 1_500_000) {
+      return new Response("payload too large", { status: 413 });
+    }
+    const body = await req.json().catch(() => null);
+    const validBox = (box: unknown) => Array.isArray(box) && box.length === 6 &&
+      box.every((n) => typeof n === "number" && Number.isFinite(n)) &&
+      box.slice(0, 4).every((n) => n >= 0 && n <= 1) &&
+      box[0] < box[2] && box[1] < box[3] &&
+      box[4] >= 0 && box[4] <= 1 && [2, 3, 5, 7].includes(box[5]);
+    if (!body || typeof body.cameraId !== "string" ||
+        !/^[0-9a-f-]{36}$/.test(body.cameraId) ||
+        typeof body.frame !== "string" || body.frame.length > 1_000_000 ||
+        !Number.isFinite(body.observedAt) ||
+        Math.abs(Date.now() - body.observedAt) > 90_000 ||
+        !Array.isArray(body.vehicles) || body.vehicles.length > 100 ||
+        !body.vehicles.every(validBox)) {
+      return new Response("bad request", { status: 400 });
+    }
+    let bytes: Uint8Array;
+    try {
+      bytes = Uint8Array.from(atob(body.frame), (c) => c.charCodeAt(0));
+    } catch {
+      return new Response("invalid image", { status: 400 });
+    }
+    if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 ||
+        bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) {
+      return new Response("invalid image", { status: 400 });
+    }
+    const imageBuffer = new ArrayBuffer(bytes.length);
+    new Uint8Array(imageBuffer).set(bytes);
+    const frame = await ctx.storage.store(new Blob([imageBuffer], { type: "image/jpeg" }));
+    return Response.json(await ctx.runMutation(internal.nycCameras.saveObservation, {
+      cameraId: body.cameraId, observedAt: body.observedAt,
+      frame, vehicles: body.vehicles,
+    }));
+  }),
+});
+
 export default http;

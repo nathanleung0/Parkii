@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { serviceAreaFor } from "./areas";
 
 // Operator-only camera registry. Add a feed only after confirming that its
 // operator permits this use and that it actually sees legal curb spaces.
@@ -20,8 +21,8 @@ export const upsert = internalMutation({
     if (!camera.camId.trim() || !camera.name.trim() || !camera.sourceAttribution.trim()) {
       throw new Error("Camera ID, name, and attribution are required");
     }
-    if (camera.lat < 37.6 || camera.lat > 37.84 || camera.lng < -122.53 || camera.lng > -122.34) {
-      throw new Error("Camera must be in San Francisco");
+    if (!serviceAreaFor(camera.lat, camera.lng)) {
+      throw new Error("Camera must be in San Francisco or New York City");
     }
     if (camera.sourceType === "youtube") {
       if (!camera.youtubeId || !/^[A-Za-z0-9_-]{11}$/.test(camera.youtubeId)) {

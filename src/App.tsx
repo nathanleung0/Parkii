@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DriverView } from "./DriverView";
+import { NycDemoView } from "./NycDemoView";
 import { Calibrate } from "./Calibrate";
 
 function useHash(): string {
@@ -14,20 +15,23 @@ function useHash(): string {
 
 export default function App() {
   const hash = useHash();
-  const calibrate = hash === "#/calibrate";
+  const calibrate = hash === "#/calibrate" || hash === "#/calibrate/sf";
+  const sfCalibration = hash === "#/calibrate/sf";
+  const sfPilot = hash === "#/sf";
   return (
     <div className="app">
       <header className="app-header">
         <a href="#/" className="brand">
           <span>Parkii</span>
         </a>
-        <span className="tagline">Camera-observed street parking</span>
+        <span className="tagline">Street cameras and observed parking</span>
         <nav aria-label="Main navigation">
-          <a href="#/" className={!calibrate ? "active" : ""}>Find parking</a>
+          <a href="#/" className={!calibrate && !sfPilot ? "active" : ""}>Find parking</a>
+          <a href="#/sf" className={sfPilot ? "active" : ""}>SF pilot</a>
           <a href="#/calibrate" className={calibrate ? "active" : ""}>Calibrate</a>
         </nav>
       </header>
-      {calibrate ? <Calibrate /> : <DriverView />}
+      {sfCalibration ? <Calibrate /> : sfPilot ? <DriverView /> : <NycDemoView calibrationMode={calibrate} />}
     </div>
   );
 }

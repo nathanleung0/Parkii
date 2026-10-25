@@ -8,6 +8,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { distanceMeters } from "./geometry";
+import { selectCameraViews } from "./cameraSelection";
 import { cellFor, cellsAround, MAP_RADIUS_M, SEARCH_RADIUS_M, withinRadius } from "./geo";
 import type { Doc } from "./_generated/dataModel";
 
@@ -31,6 +32,9 @@ async function publicCamera(ctx: QueryCtx, camera: Doc<"cameras">) {
     vehicles: camera.vehicles,
     sourceAttribution: camera.sourceAttribution,
     frameUrl: camera.lastFrame ? await ctx.storage.getUrl(camera.lastFrame) : null,
+    previewUrl: camera.youtubeId && /^[A-Za-z0-9_-]{11}$/.test(camera.youtubeId)
+      ? `https://i.ytimg.com/vi/${camera.youtubeId}/maxresdefault_live.jpg`
+      : null,
   };
 }
 
@@ -70,14 +74,12 @@ async function activeNearbyStalls(ctx: QueryCtx, lat: number, lng: number, radiu
 export const listCamerasNear = query({
   args: { lat: v.number(), lng: v.number() },
   handler: async (ctx, { lat, lng }) => {
-    const pairs = await activeNearbyStalls(ctx, lat, lng, MAP_RADIUS_M);
-    const cameras = new Map(pairs.map(({ camera }) => [camera._id, camera]));
-    // Also list nearby cameras with no calibrated stalls yet, so their live view shows,
-    // after the ones with stalls. The camera table is small enough to scan.
-    const uncalibrated = (await ctx.db.query("cameras").collect())
-      .filter((c) => c.enabled !== false && !cameras.has(c._id) && withinRadius(lat, lng, c.lat, c.lng, MAP_RADIUS_M))
-      .sort((a, b) => distanceMeters(lat, lng, a.lat, a.lng) - distanceMeters(lat, lng, b.lat, b.lng));
-    return Promise.all([...cameras.values(), ...uncalibrated].map((camera) => publicCamera(ctx, camera)));
+    const ranked = selectCameraViews(await ctx.db.query("cameras").collect(), lat, lng);
+    return Promise.all(ranked.map(async (camera) => ({
+      ...await publicCamera(ctx, camera),
+      distanceM: camera.distanceM,
+      nearby: camera.nearby,
+    })));
   },
 });
 

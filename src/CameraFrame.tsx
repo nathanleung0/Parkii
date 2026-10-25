@@ -1,8 +1,9 @@
-import type { MouseEvent, ReactNode } from "react";
-import { STATUS_COLOR, displayStatus, type Camera, type Stall } from "./util";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { STATUS_COLOR, STALE_MS, displayStatus, type Camera, type Stall } from "./util";
+import { VehicleBoxes } from "./VehicleBoxes";
 
-// Latest camera frame with vehicle boxes and stall polygons overlaid.
-// Overlay uses a 0..1 viewBox, matching the normalized coordinates in Convex.
+// Detection outlines match the processed image. Internal stall regions are
+// shown only in calibration, both in normalized image coordinates.
 export function CameraFrame({
   camera,
   stalls,
@@ -10,6 +11,9 @@ export function CameraFrame({
   session,
   highlight,
   onClick,
+  showVehicles = true,
+  showStalls = true,
+  useLivePreview = false,
   children,
 }: {
   camera: Camera;
@@ -18,8 +22,18 @@ export function CameraFrame({
   session: string;
   highlight?: string | null;
   onClick?: (x: number, y: number) => void;
+  showVehicles?: boolean;
+  showStalls?: boolean;
+  useLivePreview?: boolean;
   children?: ReactNode;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const previewOnly = useLivePreview && camera.previewUrl &&
+    (!camera.frameUrl || now - (camera.lastSeen ?? 0) >= STALE_MS);
+  const imageUrl = previewOnly
+    ? `${camera.previewUrl}?t=${Math.floor(now / 60_000)}`
+    : camera.frameUrl;
+  useEffect(() => setImageFailed(false), [imageUrl]);
   const handleClick = (e: MouseEvent<SVGSVGElement>) => {
     if (!onClick) return;
     const r = e.currentTarget.getBoundingClientRect();
@@ -27,32 +41,19 @@ export function CameraFrame({
   };
   return (
     <div className="frame">
-      {camera.frameUrl ? (
-        <img src={camera.frameUrl} alt={camera.name} />
+      {imageUrl && !imageFailed ? (
+        <img src={imageUrl} alt={camera.name} onError={() => setImageFailed(true)} />
       ) : (
-        <div className="frame-empty">Waiting for first frame…</div>
+        <div className="frame-empty">Camera preview unavailable</div>
       )}
-      <svg
+      {(showVehicles || showStalls || onClick || children) && <svg
         viewBox="0 0 1 1"
         preserveAspectRatio="none"
         onClick={handleClick}
         style={{ cursor: onClick ? "crosshair" : "default" }}
       >
-        {(camera.vehicles ?? []).map(([x1, y1, x2, y2], i) => (
-          <rect
-            key={i}
-            x={x1}
-            y={y1}
-            width={x2 - x1}
-            height={y2 - y1}
-            fill="none"
-            stroke="#38bdf8"
-            strokeWidth={1.5}
-            vectorEffect="non-scaling-stroke"
-            strokeDasharray="4 3"
-          />
-        ))}
-        {stalls.map((s) => {
+        {showVehicles && !previewOnly && <VehicleBoxes vehicles={camera.vehicles ?? []} />}
+        {showStalls && stalls.map((s) => {
           const color = STATUS_COLOR[displayStatus(s, now, session)];
           return (
             <polygon
@@ -67,7 +68,7 @@ export function CameraFrame({
           );
         })}
         {children}
-      </svg>
+      </svg>}
     </div>
   );
 }

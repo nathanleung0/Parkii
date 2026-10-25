@@ -28,6 +28,7 @@ from sharding import belongs_to_shard
 
 ROOT = pathlib.Path(__file__).resolve().parent
 VEHICLE_CLASSES = [2, 3, 5, 7]  # COCO: car, motorcycle, bus, truck
+VEHICLE_LABELS = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
 UPLOAD_WIDTH = 960
 
 
@@ -83,8 +84,10 @@ class Worker:
             frame, classes=VEHICLE_CLASSES, conf=self.args.conf, imgsz=self.args.imgsz, verbose=False
         )[0]
         out = []
-        for (x1, y1, x2, y2), c in zip(res.boxes.xyxy.tolist(), res.boxes.conf.tolist()):
-            out.append([round(x1 / w, 4), round(y1 / h, 4), round(x2 / w, 4), round(y2 / h, 4), round(c, 3)])
+        for (x1, y1, x2, y2), c, class_id in zip(
+            res.boxes.xyxy.tolist(), res.boxes.conf.tolist(), res.boxes.cls.tolist()
+        ):
+            out.append([round(x1 / w, 4), round(y1 / h, 4), round(x2 / w, 4), round(y2 / h, 4), round(c, 3), int(class_id)])
         return out
 
     def push(self, cam: dict, frame: np.ndarray, vehicles: list, include_preview: bool) -> dict:
@@ -109,9 +112,10 @@ class Worker:
     def debug_image(self, cam: dict, frame: np.ndarray, vehicles: list):
         h, w = frame.shape[:2]
         img = frame.copy()
-        for x1, y1, x2, y2, c in vehicles:
+        for x1, y1, x2, y2, c, class_id in vehicles:
             cv2.rectangle(img, (int(x1 * w), int(y1 * h)), (int(x2 * w), int(y2 * h)), (0, 200, 255), 2)
-            cv2.putText(img, f"{c:.2f}", (int(x1 * w), int(y1 * h) - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
+            label = f"{VEHICLE_LABELS.get(class_id, 'vehicle')} {c:.2f}"
+            cv2.putText(img, label, (int(x1 * w), int(y1 * h) - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
         for s in cam.get("stalls", []):
             pts = np.array([[int(x * w), int(y * h)] for x, y in s["polygon"]], np.int32)
             cv2.polylines(img, [pts], True, (80, 255, 80), 2)

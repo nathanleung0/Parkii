@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Map as MapGL, Marker, NavigationControl, type MapRef } from "react-map-gl/maplibre";
 import { api } from "../convex/_generated/api";
+import { serviceAreaFor } from "../convex/areas";
+import { distanceMeters } from "../convex/geometry";
 import { CameraFrame } from "./CameraFrame";
 import { VoiceAsk } from "./VoiceAsk";
 import { deriveCoverageFreshness } from "./coverageFreshness";
 import {
-  CASTRO_CENTER,
   MAP_STYLE,
   STATUS_COLOR,
   STALE_MS,
@@ -25,11 +26,15 @@ export function DriverView() {
   const nearbyStalls = useQuery(api.parking.listStallsNear, { lat: you[0], lng: you[1], sessionId: session });
   const stalls = nearbyStalls ?? [];
   const coverage = useQuery(api.parking.coverage, { lat: you[0], lng: you[1] });
+  const trafficCatalog = useQuery(api.sfCameras.catalog, {});
   const findSpot = useMutation(api.parking.findSpot);
   const releaseHold = useMutation(api.parking.releaseHold);
   const now = useNow();
 
   const [selectedCam, setSelectedCam] = useState<string | null>(null);
+  const [selectedTrafficCam, setSelectedTrafficCam] = useState<string | null>(null);
+  const [trafficImageFailed, setTrafficImageFailed] = useState(false);
+  const [trafficImageSize, setTrafficImageSize] = useState<[number, number]>([4, 3]);
   const [spot, setSpot] = useState<Awaited<ReturnType<typeof findSpot>> | undefined>();
   const [busy, setBusy] = useState(false);
   const [findError, setFindError] = useState(false);
@@ -44,9 +49,19 @@ export function DriverView() {
   }, [stalls, now, session]);
 
   const cam = cameras.find((c) => c._id === selectedCam) ?? cameras[0];
+  const nearbyTraffic = useMemo(() => serviceAreaFor(you[0], you[1]) === "sf"
+    ? (trafficCatalog?.cameras ?? [])
+      .map((camera) => ({ ...camera, distanceM: Math.round(distanceMeters(you[0], you[1], camera.lat, camera.lng)) }))
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, 8)
+    : [], [trafficCatalog, you]);
+  const trafficCam = nearbyTraffic.find((camera) => camera.id === selectedTrafficCam) ?? nearbyTraffic[0];
+  const showParkingCam = !!cam && (cam.nearby || selectedCam === cam._id || !trafficCam);
+  const trafficImageSrc = trafficCam ? `${trafficCam.imageUrl}?v=${Math.floor(now / 60_000)}` : null;
   const camStalls = (camId: string) => stalls.filter((s) => s.cameraId === camId);
   const liveCoverage = deriveCoverageFreshness(coverage, nearbyStalls, you, now, STALE_MS);
   const coverageTone = liveCoverage.tone;
+  useEffect(() => setTrafficImageFailed(false), [trafficImageSrc]);
 
   async function onFind() {
     setBusy(true);
@@ -102,6 +117,34 @@ export function DriverView() {
     setLocationLabel(label);
     setSpot(undefined);
     setSelectedCam(null);
+    setSelectedTrafficCam(null);
+  }
+
+  function trafficSection() {
+    if (!trafficCam) return null;
+    return <section className="camera-section" aria-label="Nearby public traffic camera">
+      <div className="section-heading">
+        <div><p className="eyebrow">CALTRANS TRAFFIC VIEWS · {trafficCatalog?.cameras.length ?? 0} IN SF</p><h2>{trafficCam.name}</h2></div>
+        <span className="camera-badge">{distanceLabel(trafficCam.distanceM)} away</span>
+      </div>
+      <div className="cam-tabs">
+        {nearbyTraffic.map((camera) => <button key={camera.id}
+          className={camera.id === trafficCam.id ? "tab active" : "tab"}
+          onClick={() => setSelectedTrafficCam(camera.id)}>
+          {camera.name} · {distanceLabel(camera.distanceM)}
+        </button>)}
+      </div>
+      <div className="frame traffic-frame" style={{ aspectRatio: `${trafficImageSize[0]} / ${trafficImageSize[1]}` }}>
+        {trafficImageFailed
+          ? <div className="frame-empty">Camera image unavailable. Choose another view.</div>
+          : <img key={trafficImageSrc} src={trafficImageSrc ?? undefined}
+            alt={`Caltrans traffic camera at ${trafficCam.name}`}
+            onLoad={(event) => setTrafficImageSize([event.currentTarget.naturalWidth, event.currentTarget.naturalHeight])}
+            onError={() => setTrafficImageFailed(true)} />}
+      </div>
+      <div className="cam-meta">Highway traffic snapshot · {distanceLabel(trafficCam.distanceM)} from the selected pin · image checked once per minute while this view is open</div>
+      <p className="source-credit">Source: Caltrans. This view cannot verify an open or legal curb space. The provider may update the image at a different rate.</p>
+    </section>;
   }
 
   return (
@@ -133,6 +176,15 @@ export function DriverView() {
                 <div className="cam-pin" data-tip={`${c.name} · ${ago(c.lastSeen, now)}`}><span /></div>
               </Marker>
             ))}
+            {nearbyTraffic.map((camera) => (
+              <Marker key={camera.id} latitude={camera.lat} longitude={camera.lng}
+                onClick={(event) => {
+                  event.originalEvent.stopPropagation();
+                  setSelectedTrafficCam(camera.id);
+                }}>
+                <div className="cam-pin traffic-cam-pin" data-tip={`${camera.name} · traffic view only · ${distanceLabel(camera.distanceM)}`}><span /></div>
+              </Marker>
+            ))}
             {stalls.map((s) => (
               <StallDot key={s._id} s={s} now={now} session={session} active={spot?.stallId === s._id} onClick={() => setSelectedCam(s.cameraId)} />
             ))}
@@ -145,6 +197,7 @@ export function DriverView() {
               <i style={{ background: STATUS_COLOR[k] }} /> {k} {counts[k]}
             </span>
           ))}
+          {nearbyTraffic.length > 0 && <span><i style={{ background: "#7e8791" }} /> traffic preview</span>}
         </div>
       </section>
 
@@ -172,8 +225,8 @@ export function DriverView() {
           <div className={`coverage-banner ${coverageTone}`} role="status">
             <span className="coverage-dot" aria-hidden="true" />
             <div>
-              <strong>{coverageTone === "fresh" ? "Recent camera coverage" : coverageTone === "delayed" ? "Camera data delayed" : coverageTone === "none" ? "No camera coverage here" : "Checking camera coverage"}</strong>
-              <span>{coverageTone === "fresh" ? `${liveCoverage.freshStalls} monitored ${liveCoverage.freshStalls === 1 ? "space" : "spaces"} updated recently` : coverageTone === "delayed" ? "Nearby spaces have no recent observation" : coverageTone === "none" ? "Try another point on the map" : "Looking for monitored curb spaces nearby"}</span>
+              <strong>{coverageTone === "fresh" ? "Recent camera coverage" : coverageTone === "delayed" ? "Camera data delayed" : coverageTone === "none" ? "No monitored parking here" : "Checking camera coverage"}</strong>
+              <span>{coverageTone === "fresh" ? `${liveCoverage.freshStalls} monitored ${liveCoverage.freshStalls === 1 ? "space" : "spaces"} updated recently` : coverageTone === "delayed" ? "Nearby spaces have no recent observation" : coverageTone === "none" ? nearbyTraffic[0] ? `No calibrated parking space within 600 m. The closest public traffic view is ${distanceLabel(nearbyTraffic[0].distanceM)} away; it cannot confirm parking.` : "No calibrated parking space is available at this point." : "Looking for monitored curb spaces nearby"}</span>
             </div>
           </div>
 
@@ -182,7 +235,7 @@ export function DriverView() {
             lat={you[0]}
             lng={you[1]}
             sessionId={session}
-            selectedCamera={cam?.name}
+            selectedCamera={showParkingCam ? cam?.name : undefined}
             onResult={(r) => {
               if (r.spotChanged) setSpot(r.spot);
               if (r.spot) {
@@ -231,10 +284,11 @@ export function DriverView() {
           )}
         </div>
 
-        {cam ? (
+        {!cam?.nearby && trafficSection()}
+        {showParkingCam && cam ? (
           <section className="camera-section" aria-label="Nearby camera view">
             <div className="section-heading">
-              <div><p className="eyebrow">NEARBY CAMERAS</p><h2>Street view</h2></div>
+              <div><p className="eyebrow">{cam.nearby ? "NEARBY CAMERAS" : "NEAREST CONFIGURED CAMERA"}</p><h2>Street view</h2></div>
               <span className={now - (cam.lastSeen ?? 0) < 60_000 ? "camera-badge live" : "camera-badge offline"}>{now - (cam.lastSeen ?? 0) < 60_000 ? "Recent" : "Waiting for feed"}</span>
             </div>
             <div className="cam-tabs">
@@ -244,11 +298,11 @@ export function DriverView() {
                 </button>
               ))}
             </div>
-            <CameraFrame camera={cam} stalls={camStalls(cam._id)} now={now} session={session} highlight={spot?.stallId} />
+            <CameraFrame camera={cam} stalls={camStalls(cam._id)} now={now} session={session} showStalls={false} useLivePreview />
             <div className="cam-meta">
-              Processed {ago(cam.lastSeen, now)} · {cam.vehicles?.length ?? 0} vehicles detected
+              {cam.nearby ? "Near the destination" : `${(cam.distanceM / 1000).toFixed(1)} km from the destination · no parking coverage at the pin`} · {now - (cam.lastSeen ?? 0) >= STALE_MS && cam.previewUrl ? "Camera preview only · " : ""}Processed {ago(cam.lastSeen, now)} · dashed outlines mark model candidates
             </div>
-            <p className="source-credit">Source: {cam.sourceAttribution ?? "SF Bay Times Castro Street Cams"}</p>
+            <p className="source-credit">Source: {cam.sourceAttribution ?? "Camera operator"}</p>
             <ul className="stall-list">
               {camStalls(cam._id).map((s) => {
                 const st = displayStatus(s, now, session);
@@ -260,9 +314,10 @@ export function DriverView() {
               })}
             </ul>
           </section>
-        ) : (
-          <section className="camera-empty"><p className="eyebrow">NEARBY CAMERAS</p><h2>No view at this point</h2><p>Move the destination pin toward a monitored street to see camera observations.</p></section>
-        )}
+        ) : !trafficCam ? (
+          <section className="camera-empty"><p className="eyebrow">CAMERA VIEWS</p><h2>No configured camera in this area</h2><p>Parkii currently has configured parking cameras in the SF pilot. Use Find parking for the NYC search page.</p></section>
+        ) : null}
+        {cam?.nearby && trafficSection()}
         <p className="fineprint">
           Camera feeds can lag behind real traffic. A Parkii hold does not reserve a public street space.
         </p>
@@ -273,6 +328,10 @@ export function DriverView() {
 
 function mapsLink(p: { lat: number; lng: number }) {
   return `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`;
+}
+
+function distanceLabel(meters: number): string {
+  return meters < 1_000 ? `${meters} m` : `${(meters / 1_000).toFixed(1)} km`;
 }
 
 function StallDot({ s, now, session, active, onClick }: { s: Stall; now: number; session: string; active: boolean; onClick: () => void }) {

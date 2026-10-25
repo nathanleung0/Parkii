@@ -32,23 +32,24 @@ npm run cameras:import -- path/to/cameras.json --dry-run
 npm run cameras:import -- path/to/cameras.json
 ```
 
-4. After validating the real feed, re-import its camera with `enabled: true` and start the worker. A camera with no calibrated stalls remains absent from driver search. Set `CALIBRATION_SECRET` in Convex, open `#/calibrate`, enter that key, draw each legally usable stall polygon on the preview, and place it accurately on the map. The registry updates without resetting existing stall data.
+4. After validating the real feed, re-import its camera with `enabled: true` and start the parking worker. A camera with no calibrated stalls remains absent from driver search. Set `CALIBRATION_SECRET` in Convex, open `#/calibrate/sf` for the SF pilot, enter that key, draw each legally usable stall polygon on the preview, and place it accurately on the map. The registry updates without resetting existing stall data. `#/calibrate` is the separate NYC candidate-review screen.
 5. On an existing deployment, run `npx convex run seed:migrateSpatialIndex` until it reports `more: false`. New stalls receive their grid cell automatically.
 
 ## Operate more than one worker
 
 Each worker owns a stable subset of cameras. For example, run three processes with `--shard-count 3` and `--shard-index 0`, `1`, and `2`. Each process has its own model; add shards when a cycle exceeds its configured interval. `--preview-interval 60` uploads an image once per minute per camera while detections continue each poll. For paid deployments, benchmark the actual decoding and inference rate before choosing the interval and shard count.
 
-The default poll target is 15 seconds. At 100 cameras that is up to 576,000 frame fetches and inference passes per day, before retries; a five-second target would triple that. The worker skips inference on unchanged frames, but still fetches them. A new occupied/open result generally needs two changed polls because status uses a three-reading majority. Track source delay, fetch time, inference time, ingest time, and the fraction of searches with fresh coverage before increasing the camera count. Lower the polling rate or add shards only after measuring the impact on freshness and cost.
+The default poll target is 15 seconds. At 100 cameras that is up to 576,000 frame fetches and inference passes per day, before retries; a five-second target would triple that. The worker skips inference on unchanged frames, but still fetches them. A new occupied/open result needs three consistent changed observations, adding at least two polling intervals to a new decision. Track source delay, fetch time, inference time, ingest time, and the fraction of searches with fresh coverage before increasing the camera count. Lower the polling rate or add shards only after measuring the impact on freshness and cost.
 
 ## What the public data currently provides
 
 - [Castro Street Cams](https://sfbaytimes.com/castro-street-cam/) power the original proof of concept. Direct-feed permission still needs to be settled for a production service.
 - [511 SF Bay traffic open data](https://511.org/open-data/traffic) publishes events, tolls, and work zones; it does not offer a citywide curb-facing video API. Its map cameras predominantly monitor roads, and each candidate needs a curb-visibility and rights review.
+- [Caltrans District 4 CCTV](https://cwwp2.dot.ca.gov/documentation/cctv/cctv.htm) publishes a free HTTPS camera catalog for application integration. Parkii refreshes its SF subset every six hours and currently finds roughly 32 highway cameras in San Francisco. The SF pilot shows the eight closest as traffic snapshots, refreshing only the selected image once a minute. These cameras **never** enter parking search, calibration, or vehicle inference: highway traffic does not demonstrate a legal open curb space. A selected point may be several kilometers from the closest camera, particularly in western SF. A catalog count does not equal citywide parking coverage.
 - [SFMTA speed safety cameras](https://www.sfmta.com/projects/speed-safety-cameras) are enforcement systems, not a public occupancy feed.
 - [SFpark on-street sensors](https://www.sfmta.com/sites/default/files/reports-and-documents/2018/08/sfpark_pilot_overview.pdf) stopped providing live on-street availability after the pilot sensors reached end of life. Historical meter and occupancy data can support a separately labeled estimate, not a live camera claim.
 
-The camera registry makes new authorized sources straightforward to add. It cannot create footage where no usable camera exists.
+The camera registry accepts authorized feeds in San Francisco or New York City. The NYC DOT traffic catalog is separate: a small selected subset can receive vehicle labels from its own review worker, but it has no parking occupancy and never enters the parking detector worker. See [NYC demo setup](NYC_DEMO.md). Neither catalog size nor a nearby traffic view proves usable or legal curb parking.
 
 ## Place search
 

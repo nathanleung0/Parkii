@@ -113,7 +113,7 @@ export function Calibrate() {
               </>
             )}
           </CameraFrame>
-          <div className="cam-meta">Frame updated {ago(cam.lastSeen, now)} · dashed boxes show detected vehicles</div>
+          <div className="cam-meta">Frame processed {ago(cam.lastSeen, now)} · outlined regions are calibration data</div>
         </div>
         <p className="calibrate-guidance">Draw on the road where a parked car’s wheels sit. Avoid parklets, travel lanes, hydrants, and other spaces where parking is not legal.</p>
       </section>
