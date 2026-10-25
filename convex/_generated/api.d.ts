@@ -18,6 +18,7 @@ import type * as ingest from "../ingest.js";
 import type * as parking from "../parking.js";
 import type * as rules from "../rules.js";
 import type * as seed from "../seed.js";
+import type * as streetCleaning from "../streetCleaning.js";
 
 import type {
   ApiFromModules,
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   parking: typeof parking;
   rules: typeof rules;
   seed: typeof seed;
+  streetCleaning: typeof streetCleaning;
 }>;
 
 /**

@@ -25,3 +25,14 @@ export function cellsAround(lat: number, lng: number, radiusM: number): string[]
 export function withinRadius(lat: number, lng: number, pointLat: number, pointLng: number, radiusM: number): boolean {
   return distanceMeters(lat, lng, pointLat, pointLng) <= radiusM;
 }
+
+// Service areas we accept. NYC DOT has approved use of its camera footage for this hackathon project.
+const SF_BOX = { latMin: 37.6, latMax: 37.84, lngMin: -122.53, lngMax: -122.34 };
+const NYC_BOX = { latMin: 40.45, latMax: 40.92, lngMin: -74.27, lngMax: -73.68 };
+
+export function inSfOrNyc(lat: number, lng: number): "sf" | "nyc" | null {
+  const inBox = (b: typeof SF_BOX) => lat >= b.latMin && lat <= b.latMax && lng >= b.lngMin && lng <= b.lngMax;
+  if (inBox(SF_BOX)) return "sf";
+  if (inBox(NYC_BOX)) return "nyc";
+  return null;
+}

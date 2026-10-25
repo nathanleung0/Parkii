@@ -127,6 +127,8 @@ export const castro = internalMutation({
           label: s.label,
           lat: s.lat,
           lng: s.lng,
+          // A stall still at its camera's position hasn't been pinned on the map yet.
+          placed: s.lat !== cam.lat || s.lng !== cam.lng,
           polygon: s.polygon.map(([x, y]) => [x / W, y / H]),
           status: "unknown",
           confidence: 0,
@@ -153,5 +155,22 @@ export const migrateSpatialIndex = internalMutation({
       await ctx.db.patch(stall._id, { cell: cellFor(stall.lat, stall.lng) });
     }
     return { migrated: legacy.length, more: legacy.length === 500 };
+  },
+});
+
+// Run once after deploying the `placed` flag: stalls still sitting on their camera's position are unplaced.
+export const markUnplaced = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let unplaced = 0;
+    for (const stall of await ctx.db.query("stalls").collect()) {
+      const camera = await ctx.db.get(stall.cameraId);
+      const atCamera = !camera || (Math.abs(stall.lat - camera.lat) < 1e-7 && Math.abs(stall.lng - camera.lng) < 1e-7);
+      if (atCamera && stall.placed !== false) {
+        await ctx.db.patch(stall._id, { placed: false });
+        unplaced++;
+      }
+    }
+    return { unplaced };
   },
 });

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { inSfOrNyc } from "./geo";
 
 // Operator-only camera registry. Add a feed only after confirming that its
 // operator permits this use and that it actually sees legal curb spaces.
@@ -15,14 +16,14 @@ export const upsert = internalMutation({
     sourceUrl: v.optional(v.string()),
     sourceAttribution: v.string(),
     enabled: v.boolean(),
+    storeFrames: v.optional(v.boolean()),
   },
   handler: async (ctx, camera) => {
     if (!camera.camId.trim() || !camera.name.trim() || !camera.sourceAttribution.trim()) {
       throw new Error("Camera ID, name, and attribution are required");
     }
-    if (camera.lat < 37.6 || camera.lat > 37.84 || camera.lng < -122.53 || camera.lng > -122.34) {
-      throw new Error("Camera must be in San Francisco");
-    }
+    const area = inSfOrNyc(camera.lat, camera.lng);
+    if (!area) throw new Error("Camera must be in San Francisco or New York City");
     if (camera.sourceType === "youtube") {
       if (!camera.youtubeId || !/^[A-Za-z0-9_-]{11}$/.test(camera.youtubeId)) {
         throw new Error("A valid YouTube video ID is required");

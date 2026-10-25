@@ -12,6 +12,8 @@ export default defineSchema({
     sourceUrl: v.optional(v.string()),
     sourceAttribution: v.optional(v.string()),
     enabled: v.optional(v.boolean()),
+    // false = never store or show this camera's pictures (an operator may require this). Missing means store.
+    storeFrames: v.optional(v.boolean()),
     lat: v.number(),
     lng: v.number(),
     heading: v.number(), // degrees, 0 = north
@@ -32,6 +34,9 @@ export default defineSchema({
     history: v.array(v.boolean()), // last N raw readings, true = occupied
     updatedAt: v.number(),
     cell: v.optional(v.string()), // optional until seed:migrateSpatialIndex backfills existing rows
+    // false = drawn in the camera frame but not yet pinned on the map (lat/lng are just the camera position).
+    // Unplaced stalls never appear on the map, in search, or in coverage. Missing means placed (older rows).
+    placed: v.optional(v.boolean()),
   })
     .index("by_camera", ["cameraId"])
     .index("by_cell", ["cell"]),

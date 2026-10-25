@@ -47,7 +47,6 @@ npm install
 npx convex dev                     # terminal 1 (local backend; or `npx convex login` for cloud)
 npx convex env set INGEST_SECRET <same value as INGEST_SECRET in .env.local>
 npx convex env set AGENT_SECRET <any random string; same value goes in agents/.env>
-npx convex env set CALIBRATION_SECRET <operator-only key entered in #/calibrate>
 npx convex run seed:castro         # once: cameras + starter stalls
 
 python -m venv worker/.venv

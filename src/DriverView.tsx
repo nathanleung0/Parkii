@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Map as MapGL, Marker, NavigationControl, type MapRef } from "react-map-gl/maplibre";
 import { api } from "../convex/_generated/api";
 import { CameraFrame } from "./CameraFrame";
@@ -22,6 +22,20 @@ export function DriverView() {
   const cameras = useQuery(api.parking.listCamerasNear, { lat: you[0], lng: you[1] }) ?? [];
   const stalls = useQuery(api.parking.listStallsNear, { lat: you[0], lng: you[1], sessionId: session }) ?? [];
   const coverage = useQuery(api.parking.coverage, { lat: you[0], lng: you[1] });
+  // Keep the action in a ref: the page re-renders every second for the clock, and a new function identity
+  // would re-run this effect and cancel the lookup before it fires.
+  const streetCleaningRef = useRef(useAction(api.streetCleaning.streetCleaning));
+  streetCleaningRef.current = useAction(api.streetCleaning.streetCleaning);
+  const [cleaning, setCleaning] = useState<{ text: string | null; warning: string | null; error?: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const t = window.setTimeout(() => {
+      streetCleaningRef.current({ lat: you[0], lng: you[1] })
+        .then((r) => live && setCleaning(r))
+        .catch(() => live && setCleaning({ text: null, warning: null, error: "unavailable" }));
+    }, 400);
+    return () => { live = false; window.clearTimeout(t); };
+  }, [you]);
   const findSpot = useMutation(api.parking.findSpot);
   const releaseHold = useMutation(api.parking.releaseHold);
   const now = useNow();
@@ -34,11 +48,13 @@ export function DriverView() {
   const mapRef = useRef<MapRef>(null);
   const mounted = useRef(false);
 
+  // Stalls still at their camera's position aren't pinned on the map yet, so they don't get a dot or a count.
+  const pinned = useMemo(() => stalls.filter((s) => s.placed !== false), [stalls]);
   const counts = useMemo(() => {
     const c = { open: 0, taken: 0, held: 0, stale: 0 };
-    for (const s of stalls) c[displayStatus(s, now, session)]++;
+    for (const s of pinned) c[displayStatus(s, now, session)]++;
     return c;
-  }, [stalls, now, session]);
+  }, [pinned, now, session]);
 
   const cam = cameras.find((c) => c._id === selectedCam) ?? cameras[0];
   const camStalls = (camId: string) => stalls.filter((s) => s.cameraId === camId);
@@ -129,7 +145,7 @@ export function DriverView() {
                 <div className="cam-pin" data-tip={`${c.name} · ${ago(c.lastSeen, now)}`}><span /></div>
               </Marker>
             ))}
-            {stalls.map((s) => (
+            {pinned.map((s) => (
               <StallDot key={s._id} s={s} now={now} session={session} active={spot?.stallId === s._id} onClick={() => setSelectedCam(s.cameraId)} />
             ))}
           </MapGL>
@@ -165,6 +181,12 @@ export function DriverView() {
             <span aria-hidden="true">→</span>
           </button>
 
+          {cleaning && (cleaning.text || cleaning.error) && (
+            <div className={`rules-card ${cleaning.warning ?? ""}`}>
+              <span className="field-label">STREET CLEANING HERE</span>
+              <p>{cleaning.error ? "Street-cleaning schedule unavailable right now." : cleaning.text}</p>
+            </div>
+          )}
           <div className={`coverage-banner ${coverageTone}`} role="status">
             <span className="coverage-dot" aria-hidden="true" />
             <div>

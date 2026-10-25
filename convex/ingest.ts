@@ -15,7 +15,8 @@ export const apply = internalMutation({
     vehicles: v.array(v.array(v.number())),
     ts: v.number(),
   },
-  handler: async (ctx, { camId, frame, vehicles, ts }) => {
+  handler: async (ctx, { camId, vehicles, ts, ...rest }) => {
+    let frame = rest.frame;
     const cam = await ctx.db
       .query("cameras")
       .withIndex("by_camId", (q) => q.eq("camId", camId))
@@ -27,6 +28,13 @@ export const apply = internalMutation({
     if (cam.enabled === false || (cam.lastSeen && ts <= cam.lastSeen)) {
       if (frame) await ctx.storage.delete(frame);
       return { stalls: 0, skipped: true };
+    }
+    if (cam.storeFrames === false) {
+      // Operator terms forbid keeping pictures for this camera: never store, always clear.
+      if (frame) await ctx.storage.delete(frame);
+      frame = undefined;
+      if (cam.lastFrame) await ctx.storage.delete(cam.lastFrame);
+      await ctx.db.patch(cam._id, { lastFrame: undefined, lastSeen: ts, vehicles });
     }
     if (frame && cam.lastFrame) await ctx.storage.delete(cam.lastFrame);
     await ctx.db.patch(cam._id, { ...(frame ? { lastFrame: frame } : {}), lastSeen: ts, vehicles });

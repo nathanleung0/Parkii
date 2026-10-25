@@ -29,6 +29,8 @@ export function CameraFrame({
     <div className="frame">
       {camera.frameUrl ? (
         <img src={camera.frameUrl} alt={camera.name} />
+      ) : camera.storeFrames === false ? (
+        <div className="frame-empty">Picture not shown for this city camera (operator terms). Outlines show live spaces.</div>
       ) : (
         <div className="frame-empty">Waiting for first frame…</div>
       )}

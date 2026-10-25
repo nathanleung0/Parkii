@@ -24,7 +24,6 @@ export function Calibrate() {
 
   const [camId, setCamId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [adminSecret, setAdminSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
   const cam = cameras.find((c) => c._id === camId) ?? cameras[0];
   if (!cam) return <main className="calibrate"><p className="muted">Loading cameras… (run `npm run seed` if empty)</p></main>;
@@ -45,27 +44,27 @@ export function Calibrate() {
     if (!draft || draft.polygon.length !== 4 || draft.lat === undefined || draft.lng === undefined) return;
     try {
       await upsert({
-        adminSecret,
         id: draft.id,
         cameraId: cam!._id,
         label: draft.label,
         polygon: draft.polygon,
         lat: draft.lat,
         lng: draft.lng,
+        placed: true,
       });
       setError(null);
       setDraft(null);
     } catch {
-      setError("Could not save. Check your calibration key and try again.");
+      setError("Could not save. Try again.");
     }
   }
 
   async function removeStall(id: Id<"stalls">) {
     try {
-      await remove({ id, adminSecret });
+      await remove({ id });
       setError(null);
     } catch {
-      setError("Could not delete. Check your calibration key and try again.");
+      setError("Could not delete. Try again.");
     }
   }
 
@@ -123,9 +122,6 @@ export function Calibrate() {
           <p className="eyebrow">STEP 01 · DEFINE A SPACE</p>
           <h2>Mark a legal stall</h2>
           <p className="section-intro">Draw four corners on the camera image, then pin the stall’s street location.</p>
-          <label className="secret-field">
-            Calibration key <input type="password" value={adminSecret} onChange={(event) => setAdminSecret(event.target.value)} placeholder="Operator key" />
-          </label>
           {error && <p className="feedback error">{error}</p>}
           {!draft ? (
             <button className="primary new-stall" onClick={newDraft}>+ Add parking stall</button>
@@ -183,9 +179,9 @@ export function Calibrate() {
             {camStalls.map((s) => (
               <li key={s._id}>
                 <i style={{ background: STATUS_COLOR[displayStatus(s, now, session)] }} /> {s.label}
-                <span className="muted"> {s.status}</span>
+                <span className="muted"> {s.placed === false ? "not on map yet" : s.status}</span>
                 <span className="actions">
-                  <button className="ghost small" onClick={() => setDraft({ id: s._id, label: s.label, polygon: s.polygon, lat: s.lat, lng: s.lng })}>
+                  <button className="ghost small" onClick={() => setDraft({ id: s._id, label: s.label, polygon: s.polygon, lat: s.placed === false ? undefined : s.lat, lng: s.placed === false ? undefined : s.lng })}>
                     Edit
                   </button>
                   <button className="ghost small danger" onClick={() => void removeStall(s._id)}>Delete</button>
