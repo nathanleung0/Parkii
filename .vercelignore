@@ -1,0 +1,10 @@
+# Upload only what the web app build needs. Everything else (secrets in .env*, the Python
+# worker and its venv, agents, model weights, recordings) stays on the laptop.
+/*
+!src
+!convex
+!index.html
+!package.json
+!package-lock.json
+!tsconfig.json
+!vite.config.ts

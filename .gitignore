@@ -13,3 +13,6 @@ agents/.venv
 agents/.env
 agents/.uagents
 *.pyc
+
+.vercel
+/yolo11s.pt
