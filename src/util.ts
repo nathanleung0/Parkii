@@ -6,6 +6,8 @@ export type Camera = FunctionReturnType<typeof api.parking.listCameras>[number];
 export type Stall = FunctionReturnType<typeof api.parking.listStalls>[number];
 
 export const CASTRO_CENTER: [number, number] = [37.7615, -122.435];
+// Free OpenStreetMap vector basemap for MapLibre, no API key needed.
+export const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 export const STALE_MS = 90_000;
 
 // Re-render every `ms` so "updated Xs ago" and staleness stay current.

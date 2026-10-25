@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as agent from "../agent.js";
 import type * as assistant from "../assistant.js";
 import type * as cameras from "../cameras.js";
 import type * as geo from "../geo.js";
@@ -24,6 +25,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agent: typeof agent;
   assistant: typeof assistant;
   cameras: typeof cameras;
   geo: typeof geo;

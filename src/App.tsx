@@ -17,13 +17,14 @@ export default function App() {
   const calibrate = hash === "#/calibrate";
   return (
     <div className="app">
-      <header>
+      <header className="app-header">
         <a href="#/" className="brand">
-          <span className="logo">P</span> ParkSight
+          <span className="logo">P</span>
+          <span>ParkSight</span>
         </a>
-        <span className="tagline">Live street parking from public cameras · Castro, SF</span>
-        <nav>
-          <a href="#/" className={!calibrate ? "active" : ""}>Driver</a>
+        <span className="tagline">Camera-observed street parking</span>
+        <nav aria-label="Main navigation">
+          <a href="#/" className={!calibrate ? "active" : ""}>Find parking</a>
           <a href="#/calibrate" className={calibrate ? "active" : ""}>Calibrate</a>
         </nav>
       </header>

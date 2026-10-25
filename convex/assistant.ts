@@ -28,8 +28,9 @@ function describe(c: Candidate) {
   return `${c.label}: ${c.camera}, ${c.distanceM} m away, processed ${c.ageS}s ago, detection agreement ${c.confidence.toFixed(2)}`;
 }
 
-// Shared by the web app (`ask`) and the Fetch.ai agent (`askCore`, via POST /agent/find).
-async function askImpl(ctx: ActionCtx, { text, lat, lng, sessionId }: AskArgs): Promise<AskResult> {
+// Shared by the web app (`ask`), the voice agent's no-key fallback (`agent.ts`) and the
+// Fetch.ai agent (`askCore`, via POST /agent/find).
+export async function askImpl(ctx: ActionCtx, { text, lat, lng, sessionId }: AskArgs): Promise<AskResult> {
   const candidates: Candidate[] = await ctx.runQuery(internal.parking.candidates, { lat, lng, sessionId });
   if (candidates.length === 0) {
     const coverage = await ctx.runQuery(internal.parking.agentCoverage, { lat, lng });
@@ -91,6 +92,32 @@ export const askCore = internalAction({
   handler: (ctx, args): Promise<AskResult> => askImpl(ctx, args),
 });
 
+const CARTESIA_VERSION = "2026-08-14";
+export const VOICE_ID = () => process.env.CARTESIA_VOICE_ID ?? "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4";
+
+// Short-lived Cartesia token so the browser can stream TTS over WebSocket without the API key.
+// Returns null when no key is configured (the browser then uses `speak` or its own voice).
+export const voiceToken = action({
+  args: {},
+  handler: async (): Promise<{ token: string; voiceId: string; expiresAt: number } | null> => {
+    const key = process.env.CARTESIA_API_KEY;
+    if (!key) return null;
+    const expiresIn = 300;
+    const res = await fetch("https://api.cartesia.ai/access-token", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Cartesia-Version": CARTESIA_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ grants: { tts: true }, expires_in: expiresIn }),
+    });
+    if (!res.ok) throw new Error(`Cartesia token ${res.status}`);
+    const { token } = (await res.json()) as { token: string };
+    return { token, voiceId: VOICE_ID(), expiresAt: Date.now() + expiresIn * 1000 };
+  },
+});
+
 // Cartesia text-to-speech. Returns WAV bytes, or null when no key is configured.
 export const speak = action({
   args: { text: v.string() },
@@ -107,7 +134,7 @@ export const speak = action({
       body: JSON.stringify({
         model_id: "sonic-3.6",
         transcript: text,
-        voice: { id: process.env.CARTESIA_VOICE_ID ?? "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4" },
+        voice: { id: VOICE_ID() },
         output_format: { container: "wav", encoding: "pcm_s16le", sample_rate: 24000 },
       }),
     });

@@ -2,31 +2,37 @@ import { useEffect, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
+import { speakStream, unlockAudio } from "./cartesiaStream";
 
-export type AskResult = FunctionReturnType<typeof api.assistant.ask>;
+export type AgentResult = FunctionReturnType<typeof api.agent.run>;
 
 const MAX_RECORD_MS = 12_000; // Cartesia path accepts up to ~15 s / 1 MB
 
-// Hands-free "find me parking near X": mic -> Cartesia speech-to-text -> Claude picks a spot ->
-// Cartesia text-to-speech. Typed input and browser voices remain as fallbacks when keys are missing.
+// Hands-free "find me parking near X and start directions": mic -> Cartesia speech-to-text ->
+// Claude agent (looks at camera frames, holds a spot, drives the UI) -> streamed Cartesia voice.
+// Typed input, WAV TTS and browser voices remain as fallbacks when keys are missing.
 export function VoiceAsk({
   lat,
   lng,
   sessionId,
+  selectedCamera,
   onResult,
 }: {
   lat: number;
   lng: number;
   sessionId: string;
-  onResult: (r: AskResult) => void;
+  selectedCamera?: string;
+  onResult: (r: AgentResult) => void;
 }) {
-  const ask = useAction(api.assistant.ask);
+  const run = useAction(api.agent.run);
   const speak = useAction(api.assistant.speak);
+  const voiceToken = useAction(api.assistant.voiceToken);
   const transcribe = useAction(api.assistant.transcribe);
   const [text, setText] = useState("");
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reply, setReply] = useState<string | null>(null);
+  const [steps, setSteps] = useState<string[]>([]);
   const recorder = useRef<MediaRecorder | null>(null);
   const stopTimer = useRef<number | undefined>(undefined);
 
@@ -37,9 +43,13 @@ export function VoiceAsk({
   async function submit(q: string) {
     if (!q.trim()) return;
     setBusy(true);
+    setSteps([]);
+    unlockAudio();
+    void say("On it.");
     try {
-      const r = await ask({ text: q, lat, lng, sessionId });
+      const r = await run({ text: q, lat, lng, sessionId, selectedCamera });
       setReply(r.reply);
+      setSteps(r.steps);
       onResult(r);
       await say(r.reply);
     } catch (e) {
@@ -50,6 +60,12 @@ export function VoiceAsk({
   }
 
   async function say(line: string) {
+    try {
+      await speakStream(line, () => voiceToken({}));
+      return;
+    } catch (e) {
+      console.warn("Cartesia streaming failed, trying WAV", e);
+    }
     try {
       const wav = await speak({ text: line });
       if (wav) {
@@ -102,6 +118,7 @@ export function VoiceAsk({
   }
 
   function toggleMic() {
+    unlockAudio(); // the reply plays after async work, outside this gesture
     if (recording) recorder.current?.stop();
     else void startRecording();
   }
@@ -109,7 +126,7 @@ export function VoiceAsk({
   return (
     <div className="voice">
       <form
-        className="find-row"
+        className="voice-form"
         onSubmit={(e) => {
           e.preventDefault();
           void submit(text);
@@ -122,16 +139,27 @@ export function VoiceAsk({
           disabled={!canRecord || (busy && !recording)}
           title={canRecord ? (recording ? "Stop and send" : "Speak your request") : "Microphone not available in this browser"}
         >
-          🎙
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="12" rx="3" />
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8" />
+          </svg>
         </button>
         <input
+          aria-label="Ask about parking near a place"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={recording ? "Listening… tap the mic to send" : 'Try "parking near this pin"'}
+          placeholder={recording ? "Listening… tap the mic to send" : "Ask about a place or street"}
         />
-        <button type="submit" className="ghost" disabled={busy || recording}>{busy ? "…" : "Ask"}</button>
+        <button type="submit" className="voice-submit" disabled={busy || recording}>{busy ? "…" : "Ask"}</button>
       </form>
       {reply && <p className="reply">“{reply}”</p>}
+      {steps.length > 0 && (
+        <ul className="agent-steps">
+          {steps.map((s, i) => (
+            <li key={i}>{s}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

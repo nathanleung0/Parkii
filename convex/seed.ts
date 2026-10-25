@@ -60,6 +60,32 @@ const CAMERAS = [
     heading: 90,
     stalls: [],
   },
+  // Cams 3 and 4 face the Market St plazas, with no curb parking in view, so they have no stalls and stay
+  // out of driver search until some are drawn at #/calibrate. Positions and headings are rough estimates.
+  {
+    camId: "castro-cam3",
+    name: "Castro & Market (Cam 3)",
+    youtubeId: "2heiMNW-d7w",
+    sourceType: "youtube" as const,
+    sourceAttribution: "SF Bay Times Castro Street Cams",
+    enabled: true,
+    lat: 37.7624,
+    lng: -122.4348,
+    heading: 280,
+    stalls: [],
+  },
+  {
+    camId: "castro-cam4",
+    name: "Jane Warner Plaza (Cam 4)",
+    youtubeId: "gBeKCQmhY8I",
+    sourceType: "youtube" as const,
+    sourceAttribution: "SF Bay Times Castro Street Cams",
+    enabled: true,
+    lat: 37.7625,
+    lng: -122.4351,
+    heading: 15,
+    stalls: [],
+  },
 ];
 
 // npx convex run seed:castro            (adds missing cameras/stalls)
