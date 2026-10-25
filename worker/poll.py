@@ -65,7 +65,7 @@ class Worker:
                     return None, "replay"
                 self.replay_iters[cam["camId"]] = itertools.cycle(files)
             return cv2.imread(str(next(self.replay_iters[cam["camId"]]))), "replay"
-        return grab_frame(cam["youtubeId"], cam.get("channelId"))
+        return grab_frame(cam["youtubeId"])
 
     def detect(self, frame: np.ndarray) -> list[list[float]]:
         h, w = frame.shape[:2]

@@ -33,7 +33,6 @@ export const workerCameras = internalQuery({
       cams.map(async (c) => ({
         camId: c.camId,
         youtubeId: c.youtubeId,
-        channelId: c.channelId ?? null,
         stalls: (
           await ctx.db
             .query("stalls")

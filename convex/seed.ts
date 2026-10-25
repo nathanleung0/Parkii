@@ -12,7 +12,6 @@ const CAMERAS = [
     camId: "castro-cam1",
     name: "Castro St (Cam 1)",
     youtubeId: "ypeBQhmJREM",
-    channelId: "UCoFUleuZUyRUVDjO4JcCSTQ",
     lat: 37.7612,
     lng: -122.43492,
     heading: 0,
@@ -27,7 +26,6 @@ const CAMERAS = [
     camId: "castro-cam2",
     name: "Castro & 18th (Cam 2)",
     youtubeId: "wFESUxAE-S8",
-    channelId: "UClSdxxEoPbpZHrujhfQcdow",
     lat: 37.76092,
     lng: -122.43485,
     heading: 225,
@@ -40,7 +38,6 @@ const CAMERAS = [
     camId: "castro-cam5",
     name: "Castro Theatre (Cam 5)",
     youtubeId: "tSZaTvW7LDA",
-    channelId: "UCxIrc5Xno-i5Gc_YcZu-Rsg",
     lat: 37.76205,
     lng: -122.43468,
     heading: 270,
@@ -49,31 +46,9 @@ const CAMERAS = [
       { label: "C5-2", lat: 37.76208, lng: -122.43483, polygon: [[966, 688], [1088, 688], [1088, 720], [966, 720]] },
     ],
   },
-  // Cams 3 and 4 face the Market St plazas: no curb parking in view yet, so
-  // no stalls. Draw any in the Calibrate view.
-  {
-    camId: "castro-cam3",
-    name: "Castro & Market (Cam 3)",
-    youtubeId: "2heiMNW-d7w",
-    channelId: "UCKxzK9FBETp6vK3wdqrUelQ",
-    lat: 37.7624,
-    lng: -122.4348,
-    heading: 280,
-    stalls: [],
-  },
-  {
-    camId: "castro-cam4",
-    name: "Jane Warner Plaza (Cam 4)",
-    youtubeId: "gBeKCQmhY8I",
-    channelId: "UC7bQdkO4Q21ZU1Akc1kKVjA",
-    lat: 37.7625,
-    lng: -122.4351,
-    heading: 15,
-    stalls: [],
-  },
 ];
 
-// npx convex run seed:castro            (adds missing cameras/stalls, syncs channelId)
+// npx convex run seed:castro            (adds missing cameras/stalls)
 // npx convex run seed:castro '{"reset":true}'  (wipes and reseeds)
 export const castro = internalMutation({
   args: { reset: v.optional(v.boolean()) },
@@ -92,10 +67,7 @@ export const castro = internalMutation({
         .query("cameras")
         .withIndex("by_camId", (q) => q.eq("camId", cam.camId))
         .unique();
-      if (existing) {
-        if (existing.channelId !== cam.channelId) await ctx.db.patch(existing._id, { channelId: cam.channelId });
-        continue;
-      }
+      if (existing) continue;
       const cameraId = await ctx.db.insert("cameras", cam);
       for (const s of stalls) {
         await ctx.db.insert("stalls", {
