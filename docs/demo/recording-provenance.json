@@ -5,7 +5,9 @@
   "source_frames": 134,
   "video_frames": 220,
   "audio": "none",
-  "sha256": "455cb0de5ae7598731e9e8406b91350692133665aac0df0ca826b41eaec5e296",
-  "bytes": 2805142,
-  "limitations": "Sampled at approximately 1 fps, gaps hold last observation; earlier chat remains timestamped. Not a continuous high-frame-rate recording. Not submitted to Devpost or Fetch."
+  "sha256": "32ec9a5c650353363898e14f1bbb9f90933a0a479bf9ddbc83296ac0a8da4901",
+  "bytes": 709462,
+  "limitations": "Sampled at approximately 1 fps, gaps hold last observation; earlier chat remains timestamped. Not a continuous high-frame-rate recording. Not submitted to Devpost or Fetch.",
+  "codec": "h264",
+  "review": "Captions reviewed; successful prior reply and new no-availability request distinguished. Rough sampled walkthrough, not final submitted pitch."
 }
