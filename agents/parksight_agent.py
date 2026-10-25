@@ -1,4 +1,4 @@
-"""ParkSight Agent: ASI:One chat agent that finds and holds an open street-parking spot in the Castro.
+"""ParkSight Agent: ASI:One chat agent for camera-observed SF parking.
 
 Flow per message: geocode the place -> Convex /agent/find (Claude picks and holds a spot from live camera
 data) -> ask the Rules Agent about street cleaning / rules at that spot -> reply with spot, freshness,
@@ -28,7 +28,7 @@ from .rules_service import lookup_rules
 load_env()
 
 HELP = (
-    "I find and hold an open street-parking spot in San Francisco's **Castro**, using live public cameras.\n\n"
+    "I find camera-observed street parking near a place in San Francisco, where cameras cover legal stalls.\n\n"
     "Try: *find me parking near the Castro Theatre*."
 )
 
@@ -40,7 +40,7 @@ agent = Agent(
     publish_agent_details=True,
     readme_path=str(ROOT / "PARKSIGHT_AGENT_README.md"),
     description=(
-        "Finds and holds an open street-parking spot in San Francisco's Castro using live public cameras, "
+        "Finds camera-observed street-parking spots in covered San Francisco areas, "
         "then warns about street cleaning and parking rules. Ask: find me parking near the Castro Theatre."
     ),
 )
@@ -84,6 +84,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         return
 
     place = await asyncio.to_thread(geocode.resolve, text)
+    if not place.resolved:
+        await ctx.send(sender, _reply(f"I couldn't locate {place.label} in San Francisco. Try a street address or landmark."))
+        return
     try:
         result = await asyncio.to_thread(convex_client.find_spot, text, place.lat, place.lng, sender)
     except convex_client.ParkSightError as e:

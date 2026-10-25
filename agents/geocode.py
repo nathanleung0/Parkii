@@ -1,15 +1,18 @@
-"""Turn the place in a chat message into coordinates (Castro landmarks first, Nominatim fallback in SF)."""
+"""Turn a San Francisco place in a chat message into coordinates."""
 import json
+import os
 import re
 import time
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Callable, Optional
 
-# Castro / Market / 18th area, the only place our cameras cover.
+# Castro remains the demo default when a user supplies no destination.
 CASTRO_CENTER = (37.7612, -122.4350)
-VIEWBOX = "-122.4450,37.7680,-122.4250,37.7540"  # left,top,right,bottom for Nominatim
+VIEWBOX = "-122.53,37.84,-122.35,37.69"  # San Francisco: left,top,right,bottom
+GEOCODER_URL = os.getenv("GEOCODER_URL", "https://nominatim.openstreetmap.org/search")
 
 LANDMARKS = {
     "castro theatre": (37.76200, -122.43480),
@@ -29,8 +32,8 @@ LANDMARKS = {
     "castro": CASTRO_CENTER,
 }
 
-# "near X", "around X", "by X", "at X", "close to X", "next to X"
-_PLACE = re.compile(r"\b(?:near|around|by|at|close to|next to|in front of|outside)\s+(?:the\s+)?(.+?)[.?!]*$", re.I)
+# "near X", "in X", "on X", "around X", "by X", "at X", "close to X"
+_PLACE = re.compile(r"\b(?:in front of|close to|next to|near|around|outside|in|on|by|at)\s+(?:the\s+)?(.+?)[.?!]*$", re.I)
 
 _last_nominatim = 0.0
 
@@ -41,6 +44,7 @@ class Place:
     lng: float
     label: str
     assumed: bool  # True when we defaulted to the Castro center because no place was given
+    resolved: bool = True
 
 
 def extract_place(text: str) -> Optional[str]:
@@ -49,16 +53,17 @@ def extract_place(text: str) -> Optional[str]:
 
 
 def _landmark(text: str) -> Optional[tuple]:
-    lowered = text.lower()
-    # longest key first so "castro theatre" wins over "castro"
-    for key in sorted(LANDMARKS, key=len, reverse=True):
-        if key in lowered:
+    phrase = extract_place(text)
+    if phrase:
+        key = phrase.lower().strip(" .,!? ")
+        if key in LANDMARKS:
             return key, LANDMARKS[key]
     return None
 
 
+@lru_cache(maxsize=2048)
 def _nominatim(query: str) -> Optional[tuple]:
-    """One request per second, bounded to the Castro viewbox, identified User-Agent (Nominatim policy)."""
+    """Cached, bounded SF lookup. Use a dedicated provider when scaling past one process."""
     global _last_nominatim
     wait = 1.0 - (time.monotonic() - _last_nominatim)
     if wait > 0:
@@ -67,7 +72,7 @@ def _nominatim(query: str) -> Optional[tuple]:
     params = urllib.parse.urlencode({
         "q": f"{query}, San Francisco, CA", "format": "jsonv2", "limit": 1,
         "viewbox": VIEWBOX, "bounded": 1, "countrycodes": "us"})
-    req = urllib.request.Request(f"https://nominatim.openstreetmap.org/search?{params}",
+    req = urllib.request.Request(f"{GEOCODER_URL}?{params}",
                                  headers={"User-Agent": "ParkSight/0.1 (Cal Hacks 13.0 hackathon project)"})
     with urllib.request.urlopen(req, timeout=8) as resp:
         rows = json.loads(resp.read().decode("utf-8"))
@@ -75,7 +80,7 @@ def _nominatim(query: str) -> Optional[tuple]:
 
 
 def resolve(text: str, nominatim: Callable[[str], Optional[tuple]] = _nominatim) -> Place:
-    """Never raises: falls back to the Castro center and says so via `assumed`."""
+    """Never route an explicitly named but unresolved destination to Castro."""
     hit = _landmark(text)
     if hit:
         key, (lat, lng) = hit
@@ -88,4 +93,5 @@ def resolve(text: str, nominatim: Callable[[str], Optional[tuple]] = _nominatim)
             found = None
         if found:
             return Place(found[0], found[1], phrase, False)
+        return Place(0, 0, phrase, False, False)
     return Place(CASTRO_CENTER[0], CASTRO_CENTER[1], "the Castro", True)

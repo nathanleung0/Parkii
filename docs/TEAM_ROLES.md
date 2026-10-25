@@ -16,7 +16,7 @@ Status is as of commit `0bdc3d8` (Sat 3:39 PM). Most features are **built**; wha
 | **Andrew** | Cloud deployment + integration + submission | Deploy Convex to the cloud so everyone (and ASI:One) can reach it |
 | **Nova** | ASI:One / Fetch.ai agent, live | Connect the ParkSight Agent's mailbox on Agentverse and chat with it in ASI:One |
 | **Josh** | Voice, live | Test speech-to-text with a real Cartesia key and a real microphone |
-| **Nathan** | Cameras, coverage, demo footage + Convex reviewer | Calibrate Cams 2 and 5 |
+| **Nathan** | Cameras, coverage, demo footage + Convex reviewer | Recalibrate Cams 2 and 5 by hand, then record demo footage |
 
 ## Andrew: cloud deployment, integration, submission
 
@@ -63,9 +63,9 @@ Status is as of commit `0bdc3d8` (Sat 3:39 PM). Most features are **built**; wha
 
 ## Nathan: cameras, coverage, demo footage, Convex reviewer
 
-**State:** Cam 1 is calibrated (about 4 stalls). Cams 2 and 5 have rough starter stalls. Only DataSF is verified live in the Rules Agent.
+**State:** Cam 1 has 4 stalls. Cam 2 has 1 stall (left curb, east side of Castro St; legality unverified) and Cam 5 has none. Those two are a first pass from a 13-minute recording, which can only reveal spots where a car was parked, so they miss empty legal spots. Map positions are approximate (about 20-30 m). Only DataSF is verified live in the Rules Agent.
 
-1. **Calibrate Cams 2 and 5** at `#/calibrate` and fix stall lat/lng on the map. More working spots make the demo stronger.
+1. **Recalibrate Cams 2 and 5 by hand** at `#/calibrate` (add the missing spots, check the Cam 1 and Cam 2 stalls are legal, nudge map positions), then copy the final stalls into `convex/seed.ts` so everyone gets them. More verified spots make the demo stronger.
 2. **Record demo footage** with `worker/poll.py --record` during a busy daytime hour, so the demo can run in replay mode at night.
 3. **Review shared Convex changes** (schema, `findSpot`, `holdStall`, `askCore`).
 4. **Stretch, cut first if short on time:** run the Apify crawl and Elastic search for real (`python -m agents.seed_rules`) so the Rules Agent can cite SFMTA rules. DataSF street cleaning already works without them.

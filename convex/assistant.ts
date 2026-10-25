@@ -13,7 +13,7 @@ const Choice = z.object({
   reply: z.string(), // one short sentence to speak to the driver
 });
 
-const SYSTEM = `You are ParkSight, a hands-free parking assistant for drivers in San Francisco's Castro neighborhood.
+const SYSTEM = `You are ParkSight, a hands-free parking assistant for drivers in San Francisco.
 You get the driver's spoken request and a list of street parking stalls that public traffic cameras currently see as open.
 Pick the stall that best fits the request (usually the nearest; respect stated preferences like "near the theater" or "on 18th").
 The reply is read aloud while the driver is driving: one sentence, under 25 words, no lists, no markdown.
@@ -25,7 +25,7 @@ type AskResult = { spot: HeldSpot | null; reply: string };
 type AskArgs = { text: string; lat: number; lng: number; sessionId: string };
 
 function describe(c: Candidate) {
-  return `${c.label}: ${c.camera}, ${c.distanceM} m away, seen open ${c.ageS}s ago, confidence ${c.confidence.toFixed(2)}`;
+  return `${c.label}: ${c.camera}, ${c.distanceM} m away, processed ${c.ageS}s ago, detection agreement ${c.confidence.toFixed(2)}`;
 }
 
 // Shared by the web app (`ask`), the voice agent's no-key fallback (`agent.ts`) and the
@@ -33,7 +33,15 @@ function describe(c: Candidate) {
 export async function askImpl(ctx: ActionCtx, { text, lat, lng, sessionId }: AskArgs): Promise<AskResult> {
   const candidates: Candidate[] = await ctx.runQuery(internal.parking.candidates, { lat, lng, sessionId });
   if (candidates.length === 0) {
-    return { spot: null, reply: "I don't see any open spots on the cameras right now. Try again in a minute." };
+    const coverage = await ctx.runQuery(internal.parking.agentCoverage, { lat, lng });
+    return {
+      spot: null,
+      reply: coverage.observedStalls === 0
+        ? "I don't have camera coverage within six hundred meters of that location yet."
+        : coverage.freshStalls === 0
+          ? "The nearby cameras are stale right now. Try again later."
+          : "I don't see any open spots on the nearby cameras right now.",
+    };
   }
 
   let pick: Candidate | undefined = candidates[0];

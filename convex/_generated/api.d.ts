@@ -10,6 +10,8 @@
 
 import type * as agent from "../agent.js";
 import type * as assistant from "../assistant.js";
+import type * as cameras from "../cameras.js";
+import type * as geo from "../geo.js";
 import type * as geometry from "../geometry.js";
 import type * as http from "../http.js";
 import type * as ingest from "../ingest.js";
@@ -25,6 +27,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   assistant: typeof assistant;
+  cameras: typeof cameras;
+  geo: typeof geo;
   geometry: typeof geometry;
   http: typeof http;
   ingest: typeof ingest;

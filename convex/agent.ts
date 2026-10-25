@@ -22,7 +22,7 @@ const LANDMARKS: Record<string, [number, number]> = {
   "19th & castro": [37.7594, -122.4349],
 };
 
-const SYSTEM = `You are ParkSight, a hands-free parking agent for drivers in San Francisco's Castro neighborhood.
+const SYSTEM = `You are ParkSight, a hands-free parking agent for drivers in San Francisco (camera coverage is densest in the Castro).
 You act for the driver with tools instead of just answering:
 - list_open_spots: stalls that public traffic cameras currently see as open, nearest first.
 - look_at_camera: the latest frame from a camera, with the stall readings. Use it to double-check a spot with your own eyes (a car pulling in, a truck blocking it) or when the driver asks what a camera shows.
@@ -78,7 +78,7 @@ const TOOLS: Anthropic.Messages.Tool[] = [
 type HeldSpot = Candidate & { expiresAt: number };
 export type AgentAction =
   | { kind: "show_camera"; cameraId: Id<"cameras"> }
-  | { kind: "set_location"; lat: number; lng: number }
+  | { kind: "set_location"; lat: number; lng: number; label: string }
   | { kind: "navigate" };
 type AgentResult = {
   reply: string;
@@ -170,7 +170,7 @@ export const run = action({
           const ll = LANDMARKS[key];
           if (!ll) return `Unknown landmark. Known: ${Object.keys(LANDMARKS).join(", ")}`;
           here = ll;
-          actions.push({ kind: "set_location", lat: ll[0], lng: ll[1] });
+          actions.push({ kind: "set_location", lat: ll[0], lng: ll[1], label: key.replace(/\b\w/g, (ch) => ch.toUpperCase()) });
           steps.push(`Moved your pin to ${key}`);
           return "ok";
         }

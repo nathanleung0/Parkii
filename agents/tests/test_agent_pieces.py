@@ -28,15 +28,22 @@ class GeocodeTest(unittest.TestCase):
         self.assertEqual((p.lat, p.assumed), (37.7596, False))
         self.assertEqual(p.label, "Dolores Park")
 
+    def test_other_neighborhood_does_not_default_to_castro(self):
+        p = geocode.resolve("parking in the Mission", lambda q: (37.7600, -122.4140))
+        self.assertEqual((p.lat, p.lng, p.label, p.resolved), (37.7600, -122.4140, "Mission", True))
+
     def test_no_place_defaults_to_castro_and_says_so(self):
         p = geocode.resolve("find me a spot", self.no_net)
         self.assertTrue(p.assumed)
         self.assertEqual((p.lat, p.lng), geocode.CASTRO_CENTER)
 
-    def test_nominatim_failure_falls_back(self):
+    def test_nominatim_failure_does_not_search_castro(self):
         def boom(_q):
             raise OSError("offline")
-        self.assertTrue(geocode.resolve("parking near Dolores Park", boom).assumed)
+        place = geocode.resolve("parking near Dolores Park", boom)
+        self.assertFalse(place.resolved)
+        self.assertFalse(place.assumed)
+        self.assertEqual(place.label, "Dolores Park")
 
     def test_extract_place(self):
         self.assertEqual(geocode.extract_place("find parking close to the Mission Dolores."), "Mission Dolores")
@@ -49,8 +56,8 @@ class FormatTest(unittest.TestCase):
                  "hits": [{"excerpt": "Most meters are enforced 9am-6pm.", "url": "https://www.sfmta.com/x"}]}
         text = format_reply.compose({"spot": SPOT, "reply": "Spot C1-2 is closest.", "frameUrl": "https://f/1"},
                                     "Castro Theatre", False, rules)
-        for needle in ("Spot C1-2 is closest.", "held for you for 3 minutes", "57 m from Castro Theatre",
-                       "Seen open 4s ago", "100% confidence", "Tuesday 6am-8am", "[source](https://www.sfmta.com/x)",
+        for needle in ("Spot C1-2 is closest.", "won't be shown to other ParkSight users for 3 minutes", "57 m from Castro Theatre",
+                       "Processed 4s ago", "100% detection agreement", "Tuesday 6am-8am", "[source](https://www.sfmta.com/x)",
                        "[Latest camera frame](https://f/1)", "destination=37.76134,-122.43509"):
             self.assertIn(needle, text)
 
