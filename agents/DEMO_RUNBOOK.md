@@ -10,7 +10,9 @@
   publish it, or run this identity on two hosts.
 
 The live configuration uses `PARKII_CHAT_ONLY=0` and
-`PARKII_PARKING_MODE=nearest`. This reuses shared Convex freshness, selection
+`PARKII_PARKING_MODE=nearest`. Hosts migrating from ParkSight must explicitly set
+these renamed variables before restarting; legacy `PARKSIGHT_*` variables are
+not read by the renamed modules. This reuses shared Convex freshness, selection
 and application holds without calling Claude. `assistant` remains an explicit
 alternative; do not silently change modes during a demo.
 
@@ -29,9 +31,27 @@ Verified live:
 - The backend `/agent/find` authentication was checked with rejected unauthorized
   and malformed requests. Those checks do not verify its Claude workflow.
 
-Not yet verified/completed:
-- A fresh successful held-spot recording after the team's latest calibration changes.
-- A submitted 3–5 minute video and final Devpost/ASI submission (Andrew coordinates).
+- The merged agent returned a real C1-2 response at 9:51 PM: 78 m away,
+  processed 29 seconds earlier, 100% detection agreement, an application hold,
+  DataSF cleaning guidance, Camera feeds and Directions. A separate read-only
+  query confirmed one active application hold on C1-2.
+- The host retained the same public address. Current public-camera API link
+  compatibility was independently checked without another hold mutation.
+
+## Prepared video draft (recorded before the Parkii rename)
+
+[3:40 English-captioned ASI:One walkthrough](../docs/demo/parksight-asi-one.mp4)
+
+This is a silent, approximately 1 fps sampled capture of the actual ASI:One tab
+under the former ParkSight name. Gaps retain the last observation. It shows the
+genuine 9:51 PM success reply and a new 9:55 PM request returning no availability
+at 9:56 PM; older history retains its original timestamps. It is a review draft,
+not a continuous newly successful recording or submitted pitch. Capture provenance
+is in `docs/demo/recording-provenance.json`. The stable seed/address are unchanged.
+
+Still to coordinate with Andrew:
+- Review the draft, retake a continuous successful flow if needed, and submit the
+  final video link plus Devpost/ASI submission.
 - Claude-backed parking inside ASI:One, remote Rules-Agent delivery, Apify or Elastic.
 - Interactive Cards and payments; these are stretch items and no payment was made.
 

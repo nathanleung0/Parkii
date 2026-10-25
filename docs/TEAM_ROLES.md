@@ -49,9 +49,11 @@ no-availability check are documented in [the demo runbook](../agents/DEMO_RUNBOO
 2. ASI:One help and real Convex parking requests are verified. A held-spot reply
    was observed earlier; availability depends on the current calibrated camera data.
 3. Andrew can use the stable public agent address in the runbook and root README.
-4. **Remaining:** record the actual 3–5 minute Fetch demo and give Andrew its link.
-   A fresh successful recording needs an eligible real spot or a visibly labeled replay;
-   do not force occupied stalls open or present an old reply as a current reading.
+4. A [3:40 captioned ASI walkthrough draft](demo/parksight-asi-one.mp4) is prepared
+   under the former ParkSight name. It includes a genuine successful response and
+   a later no-availability request; it is a sampled, silent review draft. Andrew
+   coordinates final review, any continuous successful-flow retake, and submission.
+   Do not force occupied stalls open or present old replies as current readings.
 5. Remote Rules-Agent messaging, Claude-in-ASI, Elastic and Apify are not marked
    verified by the nearest-mode evidence. Interactive Cards and payment remain stretch.
 
