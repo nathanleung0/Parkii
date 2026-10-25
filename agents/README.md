@@ -19,6 +19,12 @@ An address is fixed by its seed. Whoever hosts the demo agent must keep one seed
 submission README. Fetch also asks for the `innovationlab` and `hackathon` badges (markdown on the
 [Cal Hacks hackpack](https://www.fetch.ai/events/hackathons/calhacks-13-0/hackpack)); paste them at the top of the root README.
 
+## Demo host
+
+Nova hosts the demo agent. See [the demo runbook](DEMO_RUNBOOK.md) for its stable public address,
+verified connection checks, pending ASI:One testing, and restart instructions. Nathan's addresses above
+remain development identities; do not reuse their seeds on a second host.
+
 ## Run
 
 ```bash
@@ -37,6 +43,29 @@ agents/.venv/Scripts/python -m agents.parksight_agent
 **One-time Agentverse step (needs your Agentverse login):** each agent logs `Agent mailbox not found: create one using the
 agent inspector`. Open the printed inspector link, click **Connect → Mailbox**, then use **Chat with Agent** from the
 Agentverse profile to reach ASI:One. The ParkSight Agent has already published its `AgentChatProtocol` manifest.
+
+## First setup on a new teammate's computer
+
+Before starting the public agent, run the offline readiness check from the repository root:
+
+```powershell
+agents/.venv/Scripts/python -m agents.preflight
+```
+
+It reports missing packages and settings without making network requests or printing their values.
+A failed check means setup is incomplete, not that a sponsor integration has been tested.
+
+- Ask Andrew for the cloud `CONVEX_SITE_URL` (HTTPS, ending in `.convex.site`).
+- Receive the matching `AGENT_SECRET` privately and store it only in gitignored `agents/.env`.
+  Do not paste secrets into chat, screenshots, commits, or issue/PR text.
+- Agree who hosts the demo agent before choosing `AGENT_SEED`. A different seed creates a different
+  address from Nathan's development address above; two hosts must not run the same identity concurrently.
+- Keep the same seed for subsequent runs. Do not regenerate it during routine setup.
+- Connect the running agent to your Agentverse mailbox using the inspector link, then test through ASI:One.
+
+The readiness check does not call `/agent/find`. A real parking request can call the team's configured
+Claude model and create an application-level spot hold. Coordinate with the backend owner before live tests.
+Local package installation and the offline check do not require a paid model API key.
 
 ## Rules Agent and the in-process fallback
 
