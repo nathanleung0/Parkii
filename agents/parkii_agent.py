@@ -1,8 +1,8 @@
 """Parkii Agent: ASI:One chat agent for camera-observed SF parking.
 
-Flow per message: geocode the place -> Convex /agent/find (Claude picks and holds a spot from live camera
-data) -> ask the Rules Agent about street cleaning / rules at that spot -> reply with spot, freshness,
-rules, a camera frame and directions.
+Flow per message: geocode the place -> shared Convex parking functions (nearest mode without a
+language model, or the existing assistant endpoint) -> rules lookup -> reply with the selection mode,
+spot, freshness, rules, a camera frame and directions.
 
 Run:  python -m agents.parkii_agent
 """
@@ -29,8 +29,14 @@ load_env()
 
 HELP = (
     "I find camera-observed street parking near a place in San Francisco, where cameras cover legal stalls.\n\n"
-    "Try: *find me parking near the Castro Theatre*."
+    "Try: *find me parking near the Castro Theatre*.\n\n"
+    "This help reply does not search for parking or create a hold."
 )
+
+HELP_COMMANDS = frozenset({
+    "help", "hello", "hi", "hey", "what can you do", "what do you do",
+    "tell me what you were created to do", "test connection", "connection test",
+})
 
 agent = Agent(
     name="parkii-agent",
@@ -79,8 +85,15 @@ async def rules_for(ctx: Context, lat: float, lng: float, query: str) -> dict:
 async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     await ctx.send(sender, ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id))
     text = " ".join(c.text for c in msg.content if isinstance(c, TextContent)).strip()
-    if not text or len(text) > 2000:
+    text = text.removeprefix(f"@{agent.address}").strip()
+    if not text or len(text) > 2000 or text.casefold().strip(" .!?") in HELP_COMMANDS:
         await ctx.send(sender, _reply(HELP))
+        return
+
+    if os.environ.get("PARKII_CHAT_ONLY", "0").strip().lower() in {"1", "true", "yes"}:
+        await ctx.send(sender, _reply(
+            "Parkii is connected. Parking searches are paused for connection testing. "
+            "No spot has been requested or held. Send help to see what I can do."))
         return
 
     place = await asyncio.to_thread(geocode.resolve, text)
@@ -93,7 +106,7 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         await ctx.send(sender, _reply(str(e)))
         return
     except Exception as e:  # never leak backend details into chat
-        ctx.logger.error(f"find_spot failed: {type(e).__name__}: {e}")
+        ctx.logger.error(f"find_spot failed: {type(e).__name__}")
         await ctx.send(sender, _reply("Something went wrong finding a spot. Try again in a moment."))
         return
 

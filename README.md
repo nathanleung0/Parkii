@@ -1,3 +1,6 @@
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
 # Parkii
 
 **Camera-observed street-parking availability.** Parkii processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps Parkii from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
@@ -21,10 +24,19 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
    - `transcribe`: the browser records with `MediaRecorder` and Cartesia `ink-whisper` turns it into text (ported from Vortex's `CartesiaVoice`: same endpoint, size/format checks, no provider error text echoed to the user).
    - `ask`: Claude (`claude-opus-5-5`, structured output) reads the request, e.g. "near the theater", and the live candidate list. It picks a stall and writes a one-sentence reply that mentions how fresh the data is. Without `ANTHROPIC_API_KEY` it falls back to the nearest spot.
    - `speak`: Cartesia `sonic-3.6` reads the reply aloud. Without `CARTESIA_API_KEY` the browser's built-in voice is used and typed input still works.
-   - **Voice agent** (`convex/agent.ts`, what the web app's mic and Ask button use now): Claude runs a tool loop instead of making one pick. It can `look_at_camera` (the camera's latest frame is sent to Claude as an image, so it checks the curb itself), `list_open_spots`, `hold_spot` / `release_spot`, and drive the app with `show_camera`, `set_my_location` (a fixed list of Castro landmarks) and `start_navigation`. It also has `search_parking_rules`: for questions about time limits, meters, permits or street cleaning, Claude rewrites the spoken request into a short keyword query, and `convex/rules.ts` runs it through the Elastic Agent Builder ES|QL tool (`vortex.search_sources_workspace`) over the Apify-crawled SFMTA pages, scoped in code to the `castro` demo workspace. The reply names the page it used and the panel shows the query and source links; without `ELASTIC_KIBANA_URL` / `ELASTIC_API_KEY` on Convex the step reads "Rules search unavailable" and no rule is stated. One request like "find parking near the Castro Theatre and give me directions" runs several of these tools, and the panel lists each step it took. It only acts through these Parkii tools; it can't click or type on the page. Without `ANTHROPIC_API_KEY` it falls back to the nearest-spot pick above.
+   - **Voice agent** (`convex/agent.ts`, what the web app's mic and Ask button use now): Claude runs a tool loop instead of making one pick. It can `look_at_camera` (the camera's latest frame is sent to Claude as an image, so it checks the curb itself), `list_open_spots`, `hold_spot` / `release_spot`, and drive the app with `show_camera`, `set_my_location` (a fixed list of Castro landmarks) and `start_navigation`. One request like "find parking near the Castro Theatre and give me directions" runs several of these tools, and the panel lists each step it took. It only acts through these Parkii tools; it can't click or type on the page. Without `ANTHROPIC_API_KEY` it falls back to the nearest-spot pick above.
    - **Streaming voice** (`src/cartesiaStream.ts`): the browser gets a 5-minute Cartesia access token from `assistant.voiceToken` (the API key stays on Convex). It streams `sonic-3.6` over WebSocket and plays each PCM chunk as it arrives. It says "On it." right away while the agent works. Fallbacks: the WAV from `speak`, then the browser voice.
 6. **Calibrate view** (`#/calibrate`): click 4 corners on a live frame to draw a stall, then click the map to place it. Changes apply immediately; there's no worker restart.
-7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **Parkii Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat via Convex `POST /agent/find` (same Claude spot-picker and 3-minute holds as the web app). It asks the **Rules Agent** for street cleaning (DataSF) and SFMTA rules text (Apify + Elastic, adapters copied from Vortex). See [agents/README.md](agents/README.md) for setup and exactly what is verified.
+7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **Parkii Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat. The live `nearest` mode calls the shared Convex selection/hold mutation without an LLM; `assistant` mode uses `POST /agent/find`. Rules run in-process on the current demo host; optional remote Rules-Agent messaging, Apify and Elastic are separately configured and not claimed as verified live. See [agents/README.md](agents/README.md) for setup and exactly what is verified.
+
+## Live ASI:One demo agent
+
+Nova hosts `parkii-agent` at `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`.
+Ask `find me parking near the Castro Theatre` in ASI:One. The verified nearest
+mode reuses Convex selection/holds and DataSF rules without an LLM call.
+See [demo evidence and restart instructions](agents/DEMO_RUNBOOK.md) and
+[agent setup](agents/README.md). Availability depends on current calibrated camera
+readings; a no-availability reply is not proof of a successful held-spot demo.
 
 ## Run it
 
@@ -50,8 +62,6 @@ Optional keys (set on the Convex deployment, never in the repo):
 npx convex env set ANTHROPIC_API_KEY sk-ant-...
 npx convex env set CARTESIA_API_KEY sk_car_...
 npx convex env set CARTESIA_VOICE_ID <voice id>   # optional
-npx convex env set ELASTIC_KIBANA_URL https://...kb...elastic.cloud   # voice rules search; seed first with `python -m agents.seed_rules`
-npx convex env set ELASTIC_API_KEY ...
 ```
 
 Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), `--record DIR` / `--replay DIR` (record live frames, replay them later), `--only castro-cam1`, `--interval 5`, `--preview-interval 60`, and `--shard-count N --shard-index I` for multiple worker processes.

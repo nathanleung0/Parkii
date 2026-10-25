@@ -27,10 +27,9 @@ const CAMERAS = [
     ],
   },
   // Cam 2 looks south along Castro St toward 18th (the Walgreens at 498 Castro is on the right/west side;
-  // Twin Peaks and Sutro Tower are off to the right). FIRST PASS ONLY: derived from a 13-minute recording,
-  // which can only show spots where a car was parked, so it MISSES empty legal spots. Recalibrate by hand at
-  // #/calibrate and copy the result here. Map positions are approximate (about 20-30 m): placed from
-  // DataSF's Castro St centerline (Market-18th), offset ~7 m east for the east curb.
+  // Twin Peaks and Sutro Tower are off to the right). C2-1 is the left (east) curb; C2-2..C2-5 were drawn by
+  // hand along the right (west) curb, nearest to farthest. Map positions: C2-1 is an estimate from DataSF's
+  // Castro St centerline; C2-2..C2-5 are NOT placed yet (they sit on the camera). Set them at #/calibrate.
   {
     camId: "castro-cam2",
     name: "Castro St looking south (Cam 2)",
@@ -43,11 +42,14 @@ const CAMERAS = [
     heading: 180,
     stalls: [
       { label: "C2-1", lat: 37.7616, lng: -122.43499, polygon: [[436, 596], [556, 586], [562, 696], [436, 704]] },
+      { label: "C2-2", lat: 37.76185, lng: -122.4351, polygon: [[1085, 532], [1072, 559], [1179, 588], [1189, 560]] },
+      { label: "C2-3", lat: 37.76185, lng: -122.4351, polygon: [[922, 486], [894, 501], [1048, 552], [1055, 530]] },
+      { label: "C2-4", lat: 37.76185, lng: -122.4351, polygon: [[807, 450], [777, 470], [871, 498], [890, 477]] },
+      { label: "C2-5", lat: 37.76185, lng: -122.4351, polygon: [[740, 455], [756, 442], [686, 421], [664, 432]] },
     ],
   },
-  // Cam 5 shows the Castro Theatre front. FIRST PASS ONLY: the old starter stalls sat in the travel lane
-  // (they flipped taken/open 8-10 times in 13 minutes from passing cars), so they were removed, but the
-  // recording-based pass cannot find empty legal spots. Recalibrate by hand at #/calibrate.
+  // Cam 5 shows the Castro Theatre front. C5-1..C5-3 were drawn by hand along the street-side curb at the
+  // bottom right. Their map positions are NOT placed yet (they sit on the camera). Set them at #/calibrate.
   {
     camId: "castro-cam5",
     name: "Castro Theatre (Cam 5)",
@@ -58,7 +60,11 @@ const CAMERAS = [
     lat: 37.76196,
     lng: -122.43528,
     heading: 90,
-    stalls: [],
+    stalls: [
+      { label: "C5-1", lat: 37.76196, lng: -122.43528, polygon: [[903, 686], [946, 707], [1054, 676], [1001, 660]] },
+      { label: "C5-2", lat: 37.76196, lng: -122.43528, polygon: [[1092, 618], [1124, 637], [1178, 610], [1141, 596]] },
+      { label: "C5-3", lat: 37.76196, lng: -122.43528, polygon: [[1009, 653], [1057, 671], [1109, 639], [1080, 627]] },
+    ],
   },
   // Cams 3 and 4 face the Market St plazas, with no curb parking in view, so they have no stalls and stay
   // out of driver search until some are drawn at #/calibrate. Positions and headings are rough estimates.

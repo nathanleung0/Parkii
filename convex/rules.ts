@@ -9,7 +9,7 @@ import { internalAction } from "./_generated/server";
 // Index + tools are created by `python -m agents.seed_rules` (ELASTIC_INDEX=parksight-rules).
 
 const TOOL_WORKSPACE = "vortex.search_sources_workspace";
-const USER_ID = "parksight-demo"; // same scope as agents/rules_service.py
+const USER_ID = "parkii-demo"; // same scope as agents/rules_service.py
 const WORKSPACE = "castro";
 const MAX_HITS = 3;
 const MAX_EXCERPT_CHARS = 500;
