@@ -56,3 +56,10 @@ Nova's live test uses the local DataSF-only rules path, with remote/Elastic prov
   street image in the browser. It may lag the detection frame; its label and this limitation are explicit.
 - Claude, Cartesia, Apify and Elastic were not called by these nearest-mode selection tests.
   This is not evidence of an Anthropic integration or of remote Rules Agent delivery.
+
+## Current public-camera API compatibility
+
+When `youtubeId` is omitted from `parking:listCameras`, known Castro cameras use
+the fixed official camera-directory link, labeled **Camera feeds**. The private
+source URL is not requested. Unknown or ambiguous cameras omit optional links;
+a link lookup never retries or replaces the successful hold.

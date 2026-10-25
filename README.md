@@ -1,3 +1,6 @@
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
 # ParkSight
 
 **Camera-observed street-parking availability.** ParkSight processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps ParkSight from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
@@ -25,6 +28,15 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
    - **Streaming voice** (`src/cartesiaStream.ts`): the browser gets a 5-minute Cartesia access token from `assistant.voiceToken` (the API key stays on Convex). It streams `sonic-3.6` over WebSocket and plays each PCM chunk as it arrives. It says "On it." right away while the agent works. Fallbacks: the WAV from `speak`, then the browser voice.
 6. **Calibrate view** (`#/calibrate`): click 4 corners on a live frame to draw a stall, then click the map to place it. Changes apply immediately; there's no worker restart.
 7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **ParkSight Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat via Convex `POST /agent/find` (same Claude spot-picker and 3-minute holds as the web app). It asks the **Rules Agent** for street cleaning (DataSF) and SFMTA rules text (Apify + Elastic, adapters copied from Vortex). See [agents/README.md](agents/README.md) for setup and exactly what is verified.
+
+## Live ASI:One demo agent
+
+Nova hosts `parksight-agent` at `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`.
+Ask `find me parking near the Castro Theatre` in ASI:One. The verified nearest
+mode reuses Convex selection/holds and DataSF rules without an LLM call.
+See [demo evidence and restart instructions](agents/DEMO_RUNBOOK.md) and
+[agent setup](agents/README.md). Availability depends on current calibrated camera
+readings; a no-availability reply is not proof of a successful held-spot demo.
 
 ## Run it
 

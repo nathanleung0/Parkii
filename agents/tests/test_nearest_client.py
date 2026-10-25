@@ -51,6 +51,20 @@ class NearestModeTest(unittest.TestCase):
         self.assertEqual(result["frameUrl"], "https://i.ytimg.com/vi/tSZaTvW7LDA/maxresdefault_live.jpg")
         self.assertEqual(result["cameraUrl"], "https://www.youtube.com/watch?v=tSZaTvW7LDA")
 
+    def test_current_public_camera_contract_uses_safe_directory_link(self):
+        def post(url, headers, raw):
+            body = json.loads(raw)
+            self.calls.append(body["path"])
+            return success(spot()) if body["path"] == "parking:findSpot" else success([
+                {"name":"Castro St (Cam 1)","camId":"castro-cam1","frameUrl":ORIGIN+"/api/storage/temporary"}])
+        result = nearest_client.find_nearest(37.762,-122.4348,"s",post=post)
+        self.assertEqual(result["cameraUrl"],"https://sfbaytimes.com/castro-street-cam/")
+        self.assertIsNone(result["frameUrl"])
+        reply = format_reply.compose(result,"Castro Theatre",False,None)
+        self.assertIn("[Camera feeds]",reply)
+        self.assertNotIn("temporary",reply)
+        self.assertEqual(self.calls,["parking:findSpot","parking:listCameras"])
+
     def test_no_available_spot_does_not_make_a_frame_query(self):
         def post(url, headers, body):
             self.calls.append(json.loads(body)["path"])

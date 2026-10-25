@@ -18,11 +18,12 @@ def _number(value, low, high):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and low <= value <= high
 
 
-def _origin():
-    value = os.environ.get("CONVEX_URL") or os.environ.get("VITE_CONVEX_URL")
+def _origin(env=None):
+    env = os.environ if env is None else env
+    value = env.get("CONVEX_URL") or env.get("VITE_CONVEX_URL")
     suffix = ".convex.cloud"
     if not value:
-        value = os.environ.get("CONVEX_SITE_URL") or os.environ.get("VITE_CONVEX_SITE_URL", "")
+        value = env.get("CONVEX_SITE_URL") or env.get("VITE_CONVEX_SITE_URL", "")
         suffix = ".convex.site"
     try:
         parsed = urlsplit(value)
@@ -94,6 +95,10 @@ def _camera_links(origin, spot, post):
         if len(matches) != 1:
             return {}
         video_id = matches[0].get("youtubeId")
+        # The current public camera API intentionally omits private source fields.
+        # A fixed official directory remains useful without inventing a frame URL.
+        if video_id is None and matches[0].get("camId") in {f"castro-cam{i}" for i in range(1, 6)}:
+            return {"cameraUrl": "https://sfbaytimes.com/castro-street-cam/", "cameraLinkKind": "directory"}
         if not isinstance(video_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
             return {}
         # Ingest deletes the preceding stored frame. Stable links use the same public camera
@@ -124,4 +129,4 @@ def find_nearest(lat, lng, session_id, post=None):
     links = _camera_links(origin, spot, transport)
     return {"spot": spot, "reply": mode + f": {spot['label']} is the nearest available spot.",
             "frameUrl": links.get("frameUrl"), "frameKind": links.get("frameKind"),
-            "cameraUrl": links.get("cameraUrl"), "selectionMode": "nearest"}
+            "cameraUrl": links.get("cameraUrl"), "cameraLinkKind": links.get("cameraLinkKind"), "selectionMode": "nearest"}

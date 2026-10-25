@@ -54,16 +54,24 @@ class ChatHandlerTest(unittest.IsolatedAsyncioTestCase):
     async def test_parking_request_with_help_prefix_still_calls_backend_once(self):
         ctx = self.context()
         text = "help me find parking near the Castro Theatre"
-        place = SimpleNamespace(lat=37.762, lng=-122.4348, label="Castro Theatre", assumed=False)
+        place = SimpleNamespace(lat=37.762, lng=-122.4348, label="Castro Theatre", assumed=False, resolved=True)
         with patch.object(self.module.geocode, "resolve", return_value=place), \
                 patch.object(self.module.convex_client, "find_spot", return_value={"spot": None, "reply": "No open spots (test fixture)."}) as find:
             await self.module.on_chat(ctx, "test-sender", self.message(text))
         find.assert_called_once_with(text, place.lat, place.lng, "test-sender")
         self.assertIn("test fixture", ctx.send.await_args_list[1].args[1].content[0].text)
 
+    async def test_unresolved_location_never_calls_the_parking_backend(self):
+        ctx = self.context()
+        place = SimpleNamespace(resolved=False, label="an unknown destination")
+        with patch.object(self.module.geocode, "resolve", return_value=place), \
+                patch.object(self.module.convex_client, "find_spot", side_effect=AssertionError("unexpected parking")):
+            await self.module.on_chat(ctx, "test-sender", self.message("parking near unknown destination"))
+        self.assertIn("couldn't locate", ctx.send.await_args_list[1].args[1].content[0].text)
+
     async def test_backend_exception_details_do_not_reach_logs_or_reply(self):
         ctx = self.context()
-        place = SimpleNamespace(lat=37.762, lng=-122.4348)
+        place = SimpleNamespace(lat=37.762, lng=-122.4348, resolved=True)
         with patch.object(self.module.geocode, "resolve", return_value=place), \
                 patch.object(self.module.convex_client, "find_spot", side_effect=RuntimeError("private-error-marker")):
             await self.module.on_chat(ctx, "test-sender", self.message("find parking near Castro Theatre"))

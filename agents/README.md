@@ -7,7 +7,7 @@ Two uAgents that make ParkSight usable from **ASI:One chat** with no custom fron
 
 | Agent | File | What it does |
 |---|---|---|
-| **ParkSight Agent** (`parksight-agent`) | `parksight_agent.py` | Agent Chat Protocol agent. Geocodes the place in the message, calls Convex `POST /agent/find` (Claude picks a spot from live camera data and **holds it for 3 minutes**), asks the Rules Agent about the spot, and replies with spot, freshness, rules, camera frame and directions. |
+| **ParkSight Agent** (`parksight-agent`) | `parksight_agent.py` | Agent Chat Protocol agent. Geocodes the destination, reuses Convex selection and three-minute application holds, obtains rules, and replies inside ASI:One. The live demo explicitly uses `nearest` mode without an LLM; `assistant` mode calls `/agent/find`. |
 | **Rules Agent** (`parksight-rules-agent`) | `rules_agent.py` | Answers `RulesRequest(lat, lng, query)` with street-cleaning info (DataSF) and, when configured, a cited SFMTA rule excerpt (Elastic over Apify-crawled pages). |
 
 Dev addresses (derived from the seeds in Nathan's local `agents/.env`; **seeds are not committed**):
@@ -21,8 +21,8 @@ submission README. Fetch also asks for the `innovationlab` and `hackathon` badge
 
 ## Demo host
 
-Nova hosts the demo agent. See [the demo runbook](DEMO_RUNBOOK.md) for its stable public address,
-verified connection checks, pending ASI:One testing, and restart instructions. Nathan's addresses above
+Nova hosts the demo agent at `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`. See [the demo runbook](DEMO_RUNBOOK.md) for its stable public address,
+verified connection checks, live ASI:One evidence, limitations, and restart instructions. Nathan's addresses above
 remain development identities; do not reuse their seeds on a second host.
 
 ## Run
@@ -105,9 +105,9 @@ Verified here:
 
 Not verified:
 - **Language-model-backed parking workflow inside ASI:One**: nearest-spot mode is verified live;
-  the Claude path is unverified pending confirmation of the team's backend credits.
+  the team reports hackathon credits, but the Claude-in-ASI path has not been independently verified here.
 - **uAgent-to-uAgent delivery** (ParkSight Agent to Rules Agent): the local test timed out because Agentverse's registration API was timing out from this machine; the in-process fallback covers it.
 - **Apify crawl and Elastic search against real services**: adapters pass fake-transport unit tests only (inherited from Vortex).
 - **Persistent detection-snapshot links**: ingest deletes old stored frames. Nearest mode uses verified
-  public camera thumbnails (labeled as potentially lagging) and live-camera links instead.
+  public camera thumbnails (labeled as potentially lagging) when a validated video ID exists. With the current public camera API, known Castro cameras use a fixed official camera-directory link instead.
 - Interactive Cards and the Payment Protocol (Fetch bonuses) are not built.

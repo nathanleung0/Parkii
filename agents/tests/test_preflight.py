@@ -46,6 +46,18 @@ class ReadinessTest(unittest.TestCase):
         self.assertTrue(all(c.status == "PASS" for c in checks))
 
 
+    def test_nearest_mode_accepts_cloud_origin_without_assistant_secret(self):
+        env = {"PARKSIGHT_PARKING_MODE":"nearest","CONVEX_URL":"https://demo.convex.cloud","AGENT_SEED":"private-seed"}
+        checks = check_settings(env)
+        self.assertFalse(any(c.status == "FAIL" for c in checks))
+        self.assertNotIn("private-seed", repr(checks))
+        self.assertFalse(any(c.name == "AGENT_SECRET" for c in checks))
+
+    def test_invalid_nearest_origin_and_unknown_mode_fail(self):
+        for env in ({"PARKSIGHT_PARKING_MODE":"nearest","CONVEX_URL":"https://evil.example","AGENT_SEED":"s"},
+                    {"PARKSIGHT_PARKING_MODE":"typo","AGENT_SEED":"s"}):
+            self.assertTrue(any(c.status == "FAIL" for c in check_settings(env)))
+
     def test_cli_stays_offline_and_hides_configured_values(self):
         env = {"CONVEX_SITE_URL": "https://demo.convex.site",
                "AGENT_SECRET": "secret-do-not-print", "AGENT_SEED": "seed-do-not-print"}

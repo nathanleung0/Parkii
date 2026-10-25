@@ -1,65 +1,79 @@
-# Nova's ParkSight demo host
+# Nova's live ParkSight ASI:One demo
 
-Nova hosts the demo ParkSight Agent on the configured Windows computer. Keep that computer awake
-and connected during the demonstration. Run only one process for this agent identity.
+## Identity and host
 
-## Stable public identity
+- Agent: `parksight-agent`
+- Stable public address: `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`
+- Demo backend: `https://mellow-sandpiper-36.convex.site`
+- One running process on Nova's Windows demo host, port 8001.
+- Keep the existing private seed in ignored `agents/.env`; do not regenerate it,
+  publish it, or run this identity on two hosts.
 
-`agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq`
+The live configuration uses `PARKSIGHT_CHAT_ONLY=0` and
+`PARKSIGHT_PARKING_MODE=nearest`. This reuses shared Convex freshness, selection
+and application holds without calling Claude. `assistant` remains an explicit
+alternative; do not silently change modes during a demo.
 
-This is the demo address, distinct from Nathan's development address in the agents README.
-The private seed is saved in gitignored `agents/.env`. Never regenerate it during routine setup,
-copy it into this document, or run the same identity concurrently on another host.
+## Actual evidence — 24 October 2026, America/Los_Angeles
 
-The demo backend is `https://mellow-sandpiper-36.convex.site`. Its matching `AGENT_SECRET` is also
-stored only in `agents/.env`; it must not be copied into chat, logs, screenshots, or Git.
+Verified live:
+- Agent health responds at `http://127.0.0.1:8001/agent_info` with the address above.
+- Agentverse mailbox registration and the ACP manifest succeeded.
+- Real ASI:One messages reached the hosted agent and received help and parking replies.
+- At 6:51 PM, a real nearest-mode reply selected C5-1 and included a three-minute
+  application hold, processed age, DataSF cleaning text, camera links and directions.
+  This is historical evidence; those old camera-5 stalls are not current calibration.
+- At 9:27–9:30 PM, new ASI:One parking/help requests succeeded. The parking reply
+  reported no fresh open spots. Independent public camera/stall queries showed
+  five recent camera feeds and five registered stalls all marked taken at that time.
+- The backend `/agent/find` authentication was checked with rejected unauthorized
+  and malformed requests. Those checks do not verify its Claude workflow.
 
-## Verification on the demo host (24 October 2026)
+Not yet verified/completed:
+- A fresh successful held-spot recording after the team's latest calibration changes.
+- A submitted 3–5 minute video and final Devpost/ASI submission (Andrew coordinates).
+- Claude-backed parking inside ASI:One, remote Rules-Agent delivery, Apify or Elastic.
+- Interactive Cards and payments; these are stretch items and no payment was made.
 
-Verified:
-- Offline readiness checks pass for Python, pinned SDK, timezone package, cloud URL and private settings.
-- Cloud `POST /agent/find` returns 401 without the secret and 400 with the correct secret and an
-  invalid body. This verifies authentication without calling the model or creating a hold.
-- Cloud `GET /cameras` responds with configured camera/stall data. Frame freshness is not verified.
-- The running agent responds to local `GET /agent_info` with the demo address and port 8001.
-- AgentChatProtocol manifest publication and Almanac API registration succeed.
-- Nova confirmed that Chrome detects the local agent and enables the Inspector Connect button.
-- The running SDK reports: Successfully registered as mailbox agent in Agentverse.
+The team confirmed hackathon Claude credits. This does not independently verify
+billing settings; the current nearest-mode demo makes no Claude call.
 
-Not verified:
-- Inbound Agent Chat Protocol message delivery through ASI:One.
-- The full parking workflow inside ASI:One, including a held spot and live camera-frame link.
-- Remote Rules Agent delivery. An unset `RULES_AGENT_ADDRESS` uses the in-process fallback.
-- Available Claude credits or the cost of a real parking request.
+## Current camera contract
 
-The SDK's optional on-chain Almanac registration can print a wallet-funds warning even after API
-registration succeeds. No wallet funding, payment protocol, or token purchase was performed for this setup.
+The public `parking:listCameras` response may omit `youtubeId`. The agent returns
+the fixed [official Castro camera page](https://sfbaytimes.com/castro-street-cam/)
+for known Castro cameras, labeled Camera feeds. If a validated video ID is
+provided, the existing live-video and potentially lagging thumbnail links remain.
+Ephemeral Convex storage URLs are not presented as durable detection snapshots.
+Operator `GET /cameras` requires its own ingest secret; agents use public queries.
 
-## Connect the mailbox
+## Recording outline (3–5 minutes; no recording has been fabricated)
 
-On the actual demo host, open:
+1. Explain that the agent turns a location request into a shared parking lookup,
+   application hold, rules check and directions inside ASI:One.
+2. Open this exact agent, send `help`, then the Castro Theatre parking request.
+3. If a real eligible spot exists, show its label, processed age, agreement,
+   application hold, DataSF warning, camera link and directions.
+4. Explain that the hold only coordinates ParkSight users; public curb access
+   cannot be reserved. Camera lag and calibration can still cause errors.
+5. If no spot exists, show the honest reply. A successful-flow recording needs a
+   genuinely available calibrated stall or a visibly labeled replay from Nathan.
+   Do not force occupied stalls open to manufacture evidence.
 
-[Local Agent Inspector](https://agentverse.ai/inspect/?uri=http%3A//127.0.0.1%3A8001&address=agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff3c7pv0s3ua6q6j5ceq)
+## Setup and safe restart
 
-Sign into Agentverse, then select **Connect -> Mailbox** when the inspector resolves the local agent.
-The in-app browser could open `/agent_info` directly but its Inspector reported that it could not find
-the agent. Chrome on the host detects the agent and enables Connect; use Chrome for the mailbox step.
-Do not disable browser security, expose the local server through a public tunnel, or upload `.env`.
+Install `agents/requirements.txt` in a virtual environment and configure ignored
+`agents/.env`. Run `python -m agents.preflight` first. Its offline output hides
+all configuration values; nearest mode accepts an HTTPS Convex cloud/site origin
+without requiring the assistant-only secret. Keep the existing stable seed.
 
-After mailbox association and the backend owner's free-credit confirmation, test in ASI:One:
-*find me parking near the Castro Theatre*. Save the actual response and trace before marking the
-integration verified. The application hold does not physically reserve a public parking space.
-
-## Restart safely
-
-First stop the existing demo process; do not start a duplicate. From the repository root, use the
-virtual environment and an ignored working directory so SDK data files do not enter the source tree:
+Stop only the existing ParkSight demo process before restarting. From repo root:
 
 ```powershell
 $demoRoot = (Get-Location).Path
 $demoPython = Join-Path $demoRoot 'agents/.venv/Scripts/python.exe'
 & $demoPython -m agents.preflight
-if ($LASTEXITCODE -ne 0) { throw 'Complete the missing local settings first.' }
+if ($LASTEXITCODE -ne 0) { throw 'Complete local setup first.' }
 $env:PYTHONPATH = $demoRoot
 $env:PYTHONUNBUFFERED = '1'
 New-Item -ItemType Directory -Force -Path 'agents/.uagents' | Out-Null
@@ -68,5 +82,14 @@ try { & $demoPython -m agents.parksight_agent }
 finally { Pop-Location }
 ```
 
-This reuses the existing seed; it does not generate a new identity. Runtime data and the current
-background process's logs/PID are in ignored `agents/.uagents/`.
+If reconnecting, open the host's Agentverse Inspector and select Connect → Mailbox.
+Do not expose port 8001 publicly or put secrets in links. Runtime logs/PID remain
+in ignored `agents/.uagents/`. No account, wallet or billing change is required.
+
+## Handoff for Andrew
+
+The stable address is above. Agent code, readiness checks and live evidence are
+consolidated on the integration branch. Final submission and recording links must
+be added after they actually exist. Follow the official
+[Fetch CalHacks instructions](https://www.fetch.ai/events/hackathons/calhacks-13-0/hackpack)
+for public code, agent categorization, video and submission registration.

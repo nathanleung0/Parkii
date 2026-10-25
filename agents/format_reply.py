@@ -36,7 +36,8 @@ def compose(result: dict, place_label: str, assumed: bool, rules: Optional[dict]
         label = "Camera thumbnail (may lag)" if result.get("frameKind") == "thumbnail" else "Latest camera frame"
         links.append(f"[{label}]({result['frameUrl']})")
     if result.get("cameraUrl"):
-        links.append(f"[Live camera]({result['cameraUrl']})")
+        label = "Camera feeds" if result.get("cameraLinkKind") == "directory" else "Live camera"
+        links.append(f"[{label}]({result['cameraUrl']})")
     links.append(f"[Directions]({directions_url(spot['lat'], spot['lng'])})")
     lines += ["", " · ".join(links)]
     return "\n".join(lines)
