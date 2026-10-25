@@ -1,8 +1,8 @@
 """ParkSight Agent: ASI:One chat agent that finds and holds an open street-parking spot in the Castro.
 
-Flow per message: geocode the place -> Convex /agent/find (Claude picks and holds a spot from live camera
-data) -> ask the Rules Agent about street cleaning / rules at that spot -> reply with spot, freshness,
-rules, a camera frame and directions.
+Flow per message: geocode the place -> shared Convex parking functions (nearest mode without a
+language model, or the existing assistant endpoint) -> rules lookup -> reply with the selection mode,
+spot, freshness, rules, a camera frame and directions.
 
 Run:  python -m agents.parksight_agent
 """
