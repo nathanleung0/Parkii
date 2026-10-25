@@ -65,6 +65,17 @@ class NearestModeTest(unittest.TestCase):
         self.assertNotIn("temporary",reply)
         self.assertEqual(self.calls,["parking:findSpot","parking:listCameras"])
 
+    def test_malformed_optional_camera_id_never_discards_the_hold(self):
+        for cam_id in ([], {}, None, "unknown-camera"):
+            def post(url, headers, raw):
+                return success(spot()) if json.loads(raw)["path"] == "parking:findSpot" else success([
+                    {"name":"Castro St (Cam 1)","camId":cam_id}])
+            with self.subTest(cam_id=cam_id):
+                result = nearest_client.find_nearest(37.762,-122.4348,"s",post=post)
+                self.assertIsNotNone(result["spot"])
+                self.assertIsNone(result["cameraUrl"])
+                self.assertIsNone(result["frameUrl"])
+
     def test_no_available_spot_does_not_make_a_frame_query(self):
         def post(url, headers, body):
             self.calls.append(json.loads(body)["path"])

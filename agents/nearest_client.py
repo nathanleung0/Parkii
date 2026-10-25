@@ -97,7 +97,8 @@ def _camera_links(origin, spot, post):
         video_id = matches[0].get("youtubeId")
         # The current public camera API intentionally omits private source fields.
         # A fixed official directory remains useful without inventing a frame URL.
-        if video_id is None and matches[0].get("camId") in {f"castro-cam{i}" for i in range(1, 6)}:
+        cam_id = matches[0].get("camId")
+        if video_id is None and isinstance(cam_id, str) and cam_id in {f"castro-cam{i}" for i in range(1, 6)}:
             return {"cameraUrl": "https://sfbaytimes.com/castro-street-cam/", "cameraLinkKind": "directory"}
         if not isinstance(video_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
             return {}

@@ -38,7 +38,7 @@ agents/.venv/Scripts/python -m agents.rules_agent                  # prints its 
 agents/.venv/Scripts/python -m agents.parksight_agent
 ```
 
-`AGENT_SECRET` must equal the value set on Convex (`npx convex env set AGENT_SECRET <value>`).
+In assistant mode, `AGENT_SECRET` must equal the value set on Convex (`npx convex env set AGENT_SECRET <value>`).
 
 **One-time Agentverse step (needs your Agentverse login):** each agent logs `Agent mailbox not found: create one using the
 agent inspector`. Open the printed inspector link, click **Connect → Mailbox**, then use **Chat with Agent** from the
@@ -56,7 +56,8 @@ It reports missing packages and settings without making network requests or prin
 A failed check means setup is incomplete, not that a sponsor integration has been tested.
 
 - Ask Andrew for the cloud `CONVEX_SITE_URL` (HTTPS, ending in `.convex.site`).
-- Receive the matching `AGENT_SECRET` privately and store it only in gitignored `agents/.env`.
+- For assistant mode, receive the matching `AGENT_SECRET` privately and store it only in gitignored `agents/.env`.
+  Nearest mode uses public Convex functions and does not require that assistant secret.
   Do not paste secrets into chat, screenshots, commits, or issue/PR text.
 - Agree who hosts the demo agent before choosing `AGENT_SEED`. A different seed creates a different
   address from Nathan's development address above; two hosts must not run the same identity concurrently.
