@@ -16,6 +16,12 @@ An address is fixed by its seed. Whoever hosts the demo agent must keep one seed
 submission README. Fetch also asks for the `innovationlab` and `hackathon` badges (markdown on the
 [Cal Hacks hackpack](https://www.fetch.ai/events/hackathons/calhacks-13-0/hackpack)); paste them at the top of the root README.
 
+## Demo host
+
+Nova hosts the demo agent. See [the demo runbook](DEMO_RUNBOOK.md) for its stable public address,
+verified connection checks, pending mailbox setup, and restart instructions. Nathan's addresses above
+remain development identities; do not reuse their seeds on a second host.
+
 ## Run
 
 ```bash
