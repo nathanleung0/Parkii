@@ -1,6 +1,6 @@
-# ParkSight
+# Parkii
 
-**Camera-observed street-parking availability.** ParkSight processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps ParkSight from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
+**Camera-observed street-parking availability.** Parkii processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps Parkii from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
 
 Proof of concept: **Castro Street, San Francisco**, using the public [Castro Street Cams](https://sfbaytimes.com/castro-street-cam/) (SF Bay Times, YouTube Live).
 
@@ -16,15 +16,15 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
 2. **Detection:** `worker/poll.py` runs YOLO11s (cars, trucks, buses, motorcycles) on each frame on a configurable cycle. It POSTs vehicle boxes to Convex `/ingest`; a downscaled preview JPEG is uploaded once per minute by default.
 3. **Occupancy (in Convex):** `convex/ingest.ts` takes each vehicle's **ground footprint** (bottom 35% of its box) and checks how much falls inside each stall polygon (≥ 40% means occupied). Majority vote over the last 3 readings gives the status and a vote-agreement score, which is not a calibrated probability of availability.
    - Why footprints: on an oblique camera, cars driving in the next lane overlap the curb stalls in image space. Tuned on Cam 1, parked cars score 0.6–0.8 and passing traffic scores 0–0.1. Whole-box overlap scored passing traffic at 0.24–0.38, causing false "taken" readings.
-4. **Real-time state:** Convex pushes stall changes to nearby clients. `findSpot` considers camera-observed stalls within 600 m of the selected location and picks the nearest fresh, open stall that isn't held by another ParkSight user. A search outside camera coverage reports that no live data is available there.
+4. **Real-time state:** Convex pushes stall changes to nearby clients. `findSpot` considers camera-observed stalls within 600 m of the selected location and picks the nearest fresh, open stall that isn't held by another Parkii user. A search outside camera coverage reports that no live data is available there.
 5. **Voice:** `convex/assistant.ts`
    - `transcribe`: the browser records with `MediaRecorder` and Cartesia `ink-whisper` turns it into text (ported from Vortex's `CartesiaVoice`: same endpoint, size/format checks, no provider error text echoed to the user).
    - `ask`: Claude (`claude-opus-5-5`, structured output) reads the request, e.g. "near the theater", and the live candidate list. It picks a stall and writes a one-sentence reply that mentions how fresh the data is. Without `ANTHROPIC_API_KEY` it falls back to the nearest spot.
    - `speak`: Cartesia `sonic-3.6` reads the reply aloud. Without `CARTESIA_API_KEY` the browser's built-in voice is used and typed input still works.
-   - **Voice agent** (`convex/agent.ts`, what the web app's mic and Ask button use now): Claude runs a tool loop instead of making one pick. It can `look_at_camera` (the camera's latest frame is sent to Claude as an image, so it checks the curb itself), `list_open_spots`, `hold_spot` / `release_spot`, and drive the app with `show_camera`, `set_my_location` (a fixed list of Castro landmarks) and `start_navigation`. One request like "find parking near the Castro Theatre and give me directions" runs several of these tools, and the panel lists each step it took. It only acts through these ParkSight tools; it can't click or type on the page. Without `ANTHROPIC_API_KEY` it falls back to the nearest-spot pick above.
+   - **Voice agent** (`convex/agent.ts`, what the web app's mic and Ask button use now): Claude runs a tool loop instead of making one pick. It can `look_at_camera` (the camera's latest frame is sent to Claude as an image, so it checks the curb itself), `list_open_spots`, `hold_spot` / `release_spot`, and drive the app with `show_camera`, `set_my_location` (a fixed list of Castro landmarks) and `start_navigation`. It also has `search_parking_rules`: for questions about time limits, meters, permits or street cleaning, Claude rewrites the spoken request into a short keyword query, and `convex/rules.ts` runs it through the Elastic Agent Builder ES|QL tool (`vortex.search_sources_workspace`) over the Apify-crawled SFMTA pages, scoped in code to the `castro` demo workspace. The reply names the page it used and the panel shows the query and source links; without `ELASTIC_KIBANA_URL` / `ELASTIC_API_KEY` on Convex the step reads "Rules search unavailable" and no rule is stated. One request like "find parking near the Castro Theatre and give me directions" runs several of these tools, and the panel lists each step it took. It only acts through these Parkii tools; it can't click or type on the page. Without `ANTHROPIC_API_KEY` it falls back to the nearest-spot pick above.
    - **Streaming voice** (`src/cartesiaStream.ts`): the browser gets a 5-minute Cartesia access token from `assistant.voiceToken` (the API key stays on Convex). It streams `sonic-3.6` over WebSocket and plays each PCM chunk as it arrives. It says "On it." right away while the agent works. Fallbacks: the WAV from `speak`, then the browser voice.
 6. **Calibrate view** (`#/calibrate`): click 4 corners on a live frame to draw a stall, then click the map to place it. Changes apply immediately; there's no worker restart.
-7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **ParkSight Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat via Convex `POST /agent/find` (same Claude spot-picker and 3-minute holds as the web app). It asks the **Rules Agent** for street cleaning (DataSF) and SFMTA rules text (Apify + Elastic, adapters copied from Vortex). See [agents/README.md](agents/README.md) for setup and exactly what is verified.
+7. **ASI:One agents** (`agents/`, merged in from the Vortex project): the **Parkii Agent** answers "find me parking near the Castro Theatre" inside ASI:One chat via Convex `POST /agent/find` (same Claude spot-picker and 3-minute holds as the web app). It asks the **Rules Agent** for street cleaning (DataSF) and SFMTA rules text (Apify + Elastic, adapters copied from Vortex). See [agents/README.md](agents/README.md) for setup and exactly what is verified.
 
 ## Run it
 
@@ -50,6 +50,8 @@ Optional keys (set on the Convex deployment, never in the repo):
 npx convex env set ANTHROPIC_API_KEY sk-ant-...
 npx convex env set CARTESIA_API_KEY sk_car_...
 npx convex env set CARTESIA_VOICE_ID <voice id>   # optional
+npx convex env set ELASTIC_KIBANA_URL https://...kb...elastic.cloud   # voice rules search; seed first with `python -m agents.seed_rules`
+npx convex env set ELASTIC_API_KEY ...
 ```
 
 Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), `--record DIR` / `--replay DIR` (record live frames, replay them later), `--only castro-cam1`, `--interval 5`, `--preview-interval 60`, and `--shard-count N --shard-index I` for multiple worker processes.
@@ -70,8 +72,8 @@ To add cameras in other SF neighborhoods, follow [the coverage guide](docs/COVER
 | `convex/parking.ts` | Queries, `findSpot` / holds, calibration mutations |
 | `convex/assistant.ts` | Claude spot-picker, Cartesia speech-to-text and text-to-speech |
 | `convex/seed.ts` | Castro cameras + starter stall polygons |
-| `agents/` | Fetch.ai uAgents (ParkSight Agent, Rules Agent), street-cleaning lookup, Vortex provider adapters in `agents/providers/` |
-| `docs/MERGE_PLAN.md` | How ParkSight and Vortex are merged, and what's done |
+| `agents/` | Fetch.ai uAgents (Parkii Agent, Rules Agent), street-cleaning lookup, Vortex provider adapters in `agents/providers/` |
+| `docs/MERGE_PLAN.md` | How Parkii and Vortex are merged, and what's done |
 | `src/` | React app: `DriverView`, `Calibrate`, `CameraFrame` (SVG overlay), `VoiceAsk` |
 
 ## Known limitations (be upfront with judges)

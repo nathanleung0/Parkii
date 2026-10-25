@@ -22,10 +22,10 @@ export function useNow(ms = 1000): number {
 
 export function sessionId(): string {
   try {
-    let id = sessionStorage.getItem("parksight-session");
+    let id = sessionStorage.getItem("parkii-session");
     if (!id) {
       id = crypto.randomUUID();
-      sessionStorage.setItem("parksight-session", id);
+      sessionStorage.setItem("parkii-session", id);
     }
     return id;
   } catch {

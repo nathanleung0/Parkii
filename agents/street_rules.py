@@ -154,6 +154,6 @@ def lookup(lat: float, lng: float, now: Optional[datetime] = None, fetch=None) -
 
 
 def _fetch(url: str) -> list:
-    req = urllib.request.Request(url, headers={"User-Agent": "ParkSight/0.1 (Cal Hacks 13.0)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Parkii/0.1 (Cal Hacks 13.0)"})
     with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:  # redirects to data.sf.gov are followed
         return json.loads(resp.read().decode("utf-8"))

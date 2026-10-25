@@ -16,6 +16,7 @@ import type * as geometry from "../geometry.js";
 import type * as http from "../http.js";
 import type * as ingest from "../ingest.js";
 import type * as parking from "../parking.js";
+import type * as rules from "../rules.js";
 import type * as seed from "../seed.js";
 
 import type {
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   ingest: typeof ingest;
   parking: typeof parking;
+  rules: typeof rules;
   seed: typeof seed;
 }>;
 

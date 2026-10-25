@@ -1,7 +1,7 @@
-"""Rules Agent: answers "what are the parking rules at this spot?" for the ParkSight Agent.
+"""Rules Agent: answers "what are the parking rules at this spot?" for the Parkii Agent.
 
 Run:  python -m agents.rules_agent
-Prints its agent address; put it in agents/.env as RULES_AGENT_ADDRESS for the ParkSight Agent.
+Prints its agent address; put it in agents/.env as RULES_AGENT_ADDRESS for the Parkii Agent.
 """
 import os
 
@@ -20,7 +20,7 @@ TRANSPORT = {"mailbox": True} if os.environ.get("RULES_AGENT_MAILBOX", "1") != "
     "endpoint": [f"http://127.0.0.1:{PORT}/submit"]}
 
 agent = Agent(
-    name="parksight-rules-agent",
+    name="parkii-rules-agent",
     seed=require("RULES_AGENT_SEED"),
     port=PORT,
     **TRANSPORT,

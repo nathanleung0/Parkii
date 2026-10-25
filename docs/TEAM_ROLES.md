@@ -14,7 +14,7 @@ Status is as of commit `0bdc3d8` (Sat 3:39 PM). Most features are **built**; wha
 | Person | Owns | First thing to do |
 |---|---|---|
 | **Andrew** | Cloud deployment + integration + submission | Deploy Convex to the cloud so everyone (and ASI:One) can reach it |
-| **Nova** | ASI:One / Fetch.ai agent, live | Connect the ParkSight Agent's mailbox on Agentverse and chat with it in ASI:One |
+| **Nova** | ASI:One / Fetch.ai agent, live | Connect the Parkii Agent's mailbox on Agentverse and chat with it in ASI:One |
 | **Josh** | Voice, live | Test speech-to-text with a real Cartesia key and a real microphone |
 | **Nathan** | Cameras, coverage, demo footage + Convex reviewer | Recalibrate Cams 2 and 5 by hand, then record demo footage |
 
@@ -39,7 +39,7 @@ Status is as of commit `0bdc3d8` (Sat 3:39 PM). Most features are **built**; wha
 
 ## Nova: ASI:One / Fetch.ai agent, live
 
-**State:** `agents/parksight_agent.py` is built and its chat handler works against the local backend. It hasn't run inside ASI:One yet. Fetch's mandatory list needs the whole flow inside ASI:One chat.
+**State:** `agents/parkii_agent.py` is built and its chat handler works against the local backend. It hasn't run inside ASI:One yet. Fetch's mandatory list needs the whole flow inside ASI:One chat.
 
 1. Once the cloud deployment exists, set `CONVEX_SITE_URL` and `AGENT_SECRET` in `agents/.env`.
 2. Run the agent, open the inspector link it prints, then **Connect → Mailbox** on Agentverse.

@@ -4,7 +4,7 @@ import unittest
 
 
 path = Path(__file__).resolve().parents[1] / "sharding.py"
-spec = importlib.util.spec_from_file_location("parksight_sharding", path)
+spec = importlib.util.spec_from_file_location("parkii_sharding", path)
 sharding = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sharding)
 

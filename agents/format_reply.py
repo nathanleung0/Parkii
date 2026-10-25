@@ -14,7 +14,7 @@ def compose(result: dict, place_label: str, assumed: bool, rules: Optional[dict]
         return result.get("reply") or "I couldn't find an open spot on the cameras right now. Try again in a minute."
 
     lines = [result.get("reply", "").strip() or f"Spot {spot['label']} looks open.", ""]
-    lines.append(f"**Spot {spot['label']}** on {spot['camera']} won't be shown to other ParkSight users for {HOLD_MINUTES} minutes. Anyone may still take it.")
+    lines.append(f"**Spot {spot['label']}** on {spot['camera']} won't be shown to other Parkii users for {HOLD_MINUTES} minutes. Anyone may still take it.")
     detail = f"{spot['distanceM']} m from {place_label}"
     if assumed:
         detail += " (you didn't name a place, so I used the middle of the Castro)"

@@ -34,7 +34,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 }
 .app-header a { color: var(--ink); text-decoration: none; }
 .brand { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 20px; font-weight: 800; letter-spacing: -.045em; }
-.logo { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 7px; color: white; background: var(--ink); font-size: 19px; font-weight: 800; }
 .tagline { flex: 1; color: var(--muted); font-size: 13px; }
 .app-header nav { display: flex; align-items: center; gap: 4px; height: 100%; }
 .app-header nav a { display: inline-flex; align-items: center; height: 39px; padding: 0 15px; border-radius: 7px; color: #555; font-size: 14px; font-weight: 600; white-space: nowrap; }
@@ -188,7 +187,6 @@ main.calibrate { display: grid; grid-template-columns: minmax(0, 1fr) 375px; ali
 @media (max-width: 560px) {
   .app-header { gap: 8px; padding: 0 12px; }
   .brand { gap: 7px; font-size: 17px; }
-  .logo { width: 29px; height: 29px; font-size: 17px; }
   .app-header nav a { height: 35px; padding: 0 9px; font-size: 12px; }
   .driver-panel { max-height: 69%; padding: 18px 18px 25px; }
   .search-section h1 { font-size: 27px; }
@@ -217,5 +215,7 @@ main.calibrate { display: grid; grid-template-columns: minmax(0, 1fr) 375px; ali
 /* Voice agent: what it did, and a nudge when the browser blocked opening directions */
 .agent-steps { margin: 8px 0 0; padding-left: 18px; color: #555; font-size: 12px; display: grid; gap: 2px; }
 .agent-steps li::marker { content: "✓  "; color: #057442; }
+.rule-sources { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; padding: 8px 10px; border-left: 2px solid #cfcfcf; font-size: 11px; color: #666; }
+.rule-sources a { color: #111; }
 .nav-pulse { animation: nav-pulse 1s ease-in-out 4; }
 @keyframes nav-pulse { 50% { box-shadow: 0 0 0 6px #1112; } }

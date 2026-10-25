@@ -56,7 +56,7 @@ class FormatTest(unittest.TestCase):
                  "hits": [{"excerpt": "Most meters are enforced 9am-6pm.", "url": "https://www.sfmta.com/x"}]}
         text = format_reply.compose({"spot": SPOT, "reply": "Spot C1-2 is closest.", "frameUrl": "https://f/1"},
                                     "Castro Theatre", False, rules)
-        for needle in ("Spot C1-2 is closest.", "won't be shown to other ParkSight users for 3 minutes", "57 m from Castro Theatre",
+        for needle in ("Spot C1-2 is closest.", "won't be shown to other Parkii users for 3 minutes", "57 m from Castro Theatre",
                        "Processed 4s ago", "100% detection agreement", "Tuesday 6am-8am", "[source](https://www.sfmta.com/x)",
                        "[Latest camera frame](https://f/1)", "destination=37.76134,-122.43509"):
             self.assertIn(needle, text)
@@ -97,13 +97,13 @@ class ConvexClientTest(unittest.TestCase):
         self.assertEqual(out["spot"]["label"], "C1-2")
 
     def test_backend_error_is_safe(self):
-        with self.assertRaises(convex_client.ParkSightError) as cm:
+        with self.assertRaises(convex_client.ParkiiError) as cm:
             convex_client.find_spot("x", 1, 2, "s", post=lambda *a: (500, b"stack trace with secrets"))
         self.assertNotIn("secrets", str(cm.exception))
 
     def test_not_configured(self):
         os.environ.pop("AGENT_SECRET")
-        with self.assertRaises(convex_client.ParkSightError):
+        with self.assertRaises(convex_client.ParkiiError):
             convex_client.find_spot("x", 1, 2, "s")
 
 

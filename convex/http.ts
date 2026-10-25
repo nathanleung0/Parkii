@@ -34,7 +34,7 @@ http.route({
   }),
 });
 
-// Fetch.ai ParkSight Agent: { text, lat, lng, sessionId } -> held spot + spoken-style reply + frame URL.
+// Fetch.ai Parkii Agent: { text, lat, lng, sessionId } -> held spot + spoken-style reply + frame URL.
 // sessionId is the ASI:One sender, so each chat user holds at most one spot.
 http.route({
   path: "/agent/find",

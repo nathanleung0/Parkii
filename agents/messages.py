@@ -1,4 +1,4 @@
-"""uAgent-to-uAgent messages between the ParkSight Agent and the Rules Agent."""
+"""uAgent-to-uAgent messages between the Parkii Agent and the Rules Agent."""
 from typing import List, Optional
 
 from uagents import Model
