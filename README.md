@@ -35,7 +35,7 @@ Nova hosts `parksight-agent` at `agent1q2v2f0qaxhy2lntqrm3lfxv98ulg2eludr3z839ff
 Ask `find me parking near the Castro Theatre` in ASI:One. The verified nearest
 mode reuses Convex selection/holds and DataSF rules without an LLM call.
 See [demo evidence and restart instructions](agents/DEMO_RUNBOOK.md) and
-[agent setup](agents/README.md). Availability depends on current calibrated camera
+[agent setup](agents/README.md). A [3:40 silent, captioned demo draft](docs/demo/parksight-asi-one.mp4) is available for review; it is not a submitted pitch. Availability depends on current calibrated camera
 readings; a no-availability reply is not proof of a successful held-spot demo.
 
 ## Run it

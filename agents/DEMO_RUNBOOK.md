@@ -29,9 +29,27 @@ Verified live:
 - The backend `/agent/find` authentication was checked with rejected unauthorized
   and malformed requests. Those checks do not verify its Claude workflow.
 
-Not yet verified/completed:
-- A fresh successful held-spot recording after the team's latest calibration changes.
-- A submitted 3–5 minute video and final Devpost/ASI submission (Andrew coordinates).
+- After updating the host to merged main, the 9:50 PM request produced a real
+  C1-2 reply at 9:51 PM: 78 m away, processed 29 seconds earlier, 100% detection
+  agreement, an application hold, DataSF cleaning guidance, Camera feeds and Directions.
+  A separate read-only query confirmed one active application hold on C1-2.
+- The restarted host retained the same public address; current public-camera API
+  compatibility was independently checked without another hold mutation.
+
+## Prepared video draft
+
+[3:40 English-captioned ASI:One walkthrough](../docs/demo/parksight-asi-one.mp4)
+
+This is a silent, approximately 1 fps sampled capture of the actual ASI:One tab.
+Gaps retain the last observed image. It shows the earlier genuine 9:51 PM success
+reply and a new real request at 9:55 PM, which returned no availability at 9:56 PM.
+Earlier connection-test history keeps its original timestamps. It is a review
+**draft**, not a continuous recording of a newly successful request and not a
+submitted pitch. Capture provenance is in `docs/demo/recording-provenance.json`.
+
+Still to coordinate with Andrew:
+- Review the draft, record a continuous successful-flow retake if needed, and
+  submit the final video link plus Devpost/ASI submission.
 - Claude-backed parking inside ASI:One, remote Rules-Agent delivery, Apify or Elastic.
 - Interactive Cards and payments; these are stretch items and no payment was made.
 
