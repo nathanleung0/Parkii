@@ -19,13 +19,10 @@ import time
 import cv2
 import numpy as np
 import requests
-import torch._utils  # noqa: F401  torch 2.14 lazy-loads this, which breaks checkpoint loading
-from ultralytics import YOLO
-
 from sources import grab_frame
+from vision import VehicleDetector, add_vision_args, config_from_args
 
 ROOT = pathlib.Path(__file__).resolve().parent
-VEHICLE_CLASSES = [2, 3, 5, 7]  # COCO: car, motorcycle, bus, truck
 UPLOAD_WIDTH = 960
 
 
@@ -48,7 +45,8 @@ class Worker:
         self.site = env.get("CONVEX_SITE_URL") or env["VITE_CONVEX_SITE_URL"]
         self.secret = env.get("INGEST_SECRET", "")
         self.args = args
-        self.model = YOLO(args.model)
+        self.detector = VehicleDetector(config_from_args(args))
+        print(f"[vision] {self.detector.describe()}")
         self.last_hash: dict[str, int] = {}
         self.replay_iters: dict[str, itertools.cycle] = {}
 
@@ -67,15 +65,8 @@ class Worker:
             return cv2.imread(str(next(self.replay_iters[cam["camId"]]))), "replay"
         return grab_frame(cam["youtubeId"])
 
-    def detect(self, frame: np.ndarray) -> list[list[float]]:
-        h, w = frame.shape[:2]
-        res = self.model.predict(
-            frame, classes=VEHICLE_CLASSES, conf=self.args.conf, imgsz=self.args.imgsz, verbose=False
-        )[0]
-        out = []
-        for (x1, y1, x2, y2), c in zip(res.boxes.xyxy.tolist(), res.boxes.conf.tolist()):
-            out.append([round(x1 / w, 4), round(y1 / h, 4), round(x2 / w, 4), round(y2 / h, 4), round(c, 3)])
-        return out
+    def detect(self, frame: np.ndarray, stalls=()) -> list[list[float]]:
+        return self.detector.detect(frame, stalls)
 
     def push(self, cam: dict, frame: np.ndarray, vehicles: list) -> dict:
         h, w = frame.shape[:2]
@@ -123,7 +114,7 @@ class Worker:
             print(f"[{cam['camId']}] frame unchanged, skipping")
             return
         self.last_hash[cam["camId"]] = digest
-        vehicles = self.detect(frame)
+        vehicles = self.detect(frame, cam.get("stalls", []))
         if self.args.record:
             self.record(cam, frame)
         if self.args.debug:
@@ -163,7 +154,5 @@ if __name__ == "__main__":
     p.add_argument("--replay", metavar="DIR")
     p.add_argument("--only", nargs="*", help="camIds to process")
     p.add_argument("--interval", type=float, default=5.0, help="seconds per full camera cycle")
-    p.add_argument("--model", default="yolo11s.pt")
-    p.add_argument("--imgsz", type=int, default=1280)
-    p.add_argument("--conf", type=float, default=0.25)
+    add_vision_args(p)
     Worker(p.parse_args()).run()
