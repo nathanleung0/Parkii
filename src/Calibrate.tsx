@@ -29,6 +29,8 @@ export function Calibrate() {
 
   const [camId, setCamId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [adminSecret, setAdminSecret] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const cam = cameras.find((c) => c._id === camId) ?? cameras[0];
   if (!cam) return <main className="calibrate"><p className="muted">Loading cameras… (run `npm run seed` if empty)</p></main>;
 
@@ -45,16 +47,31 @@ export function Calibrate() {
   }
 
   async function save() {
-    if (!draft || draft.polygon.length < 3) return;
-    await upsert({
-      id: draft.id,
-      cameraId: cam!._id,
-      label: draft.label,
-      polygon: draft.polygon,
-      lat: draft.lat ?? cam!.lat,
-      lng: draft.lng ?? cam!.lng,
-    });
-    setDraft(null);
+    if (!draft || draft.polygon.length !== 4 || draft.lat === undefined || draft.lng === undefined) return;
+    try {
+      await upsert({
+        adminSecret,
+        id: draft.id,
+        cameraId: cam!._id,
+        label: draft.label,
+        polygon: draft.polygon,
+        lat: draft.lat,
+        lng: draft.lng,
+      });
+      setError(null);
+      setDraft(null);
+    } catch {
+      setError("Could not save. Check your calibration key and try again.");
+    }
+  }
+
+  async function removeStall(id: Id<"stalls">) {
+    try {
+      await remove({ id, adminSecret });
+      setError(null);
+    } catch {
+      setError("Could not delete. Check your calibration key and try again.");
+    }
   }
 
   return (
@@ -103,6 +120,10 @@ export function Calibrate() {
 
       <aside className="panel">
         <div className="card">
+          <label className="muted">
+            Calibration key <input type="password" value={adminSecret} onChange={(event) => setAdminSecret(event.target.value)} />
+          </label>
+          {error && <p className="muted">{error}</p>}
           {!draft ? (
             <button className="primary" onClick={newDraft}>+ New stall</button>
           ) : (
@@ -118,11 +139,11 @@ export function Calibrate() {
                   )}
                 </li>
                 <li className={draft.lat ? "done" : ""}>
-                  Click the map where this stall is {draft.lat ? `(${draft.lat.toFixed(5)}, ${draft.lng!.toFixed(5)})` : "(defaults to camera)"}
+                  Click the map where this stall is {draft.lat !== undefined ? `(${draft.lat.toFixed(5)}, ${draft.lng!.toFixed(5)})` : "(required)"}
                 </li>
               </ol>
               <div className="find-row">
-                <button className="primary" onClick={save} disabled={draft.polygon.length < 3}>Save</button>
+                <button className="primary" onClick={save} disabled={draft.polygon.length !== 4 || draft.lat === undefined || draft.lng === undefined}>Save</button>
                 <button className="ghost" onClick={() => setDraft(null)}>Cancel</button>
               </div>
             </div>
@@ -160,7 +181,7 @@ export function Calibrate() {
                   <button className="ghost small" onClick={() => setDraft({ id: s._id, label: s.label, polygon: s.polygon, lat: s.lat, lng: s.lng })}>
                     edit
                   </button>
-                  <button className="ghost small danger" onClick={() => remove({ id: s._id })}>delete</button>
+                      <button className="ghost small danger" onClick={() => void removeStall(s._id)}>delete</button>
                 </span>
               </li>
             ))}

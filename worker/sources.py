@@ -1,16 +1,20 @@
-"""Frame sources: YouTube Live (HLS via yt-dlp) with a thumbnail fallback."""
+"""Frames from operator-configured YouTube, direct HLS, or JPEG/PNG feeds."""
 import os
+import hashlib
 import shutil
 import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
+from urllib.parse import urlparse
 
 import cv2
 import numpy as np
 import requests
 
 HLS_TTL_S = 60 * 60  # googlevideo URLs last ~6h; refresh hourly to be safe
+MAX_SNAPSHOT_BYTES = 5 * 1024 * 1024
 _hls_cache: dict[str, tuple[str, float]] = {}
 
 
@@ -45,9 +49,10 @@ def resolve_hls(youtube_id: str) -> str | None:
 class LiveReader(threading.Thread):
     """Keeps an HLS stream open and always holds the newest decoded frame."""
 
-    def __init__(self, youtube_id: str):
+    def __init__(self, key: str, resolve: Callable[[], str | None]):
         super().__init__(daemon=True)
-        self.youtube_id = youtube_id
+        self.key = key
+        self.resolve = resolve
         self.frame: np.ndarray | None = None
         self.frame_ts = 0.0
         self.lock = threading.Lock()
@@ -60,7 +65,7 @@ class LiveReader(threading.Thread):
 
     def run(self):
         while True:
-            url = resolve_hls(self.youtube_id)
+            url = self.resolve()
             if not url:
                 time.sleep(30)
                 continue
@@ -76,17 +81,18 @@ class LiveReader(threading.Thread):
                 with self.lock:
                     self.frame, self.frame_ts = frame, time.time()
             cap.release()
-            _hls_cache.pop(self.youtube_id, None)  # stream ended or URL expired: re-resolve
-            print(f"[sources] reconnecting {self.youtube_id}")
+            if self.key.startswith("youtube:"):
+                _hls_cache.pop(self.key.removeprefix("youtube:"), None)
+            print(f"[sources] reconnecting {self.key}")
 
 
 _readers: dict[str, LiveReader] = {}
 
 
-def grab_hls(youtube_id: str, wait_s: float = 30.0) -> np.ndarray | None:
-    reader = _readers.get(youtube_id)
+def grab_hls(key: str, resolve: Callable[[], str | None], wait_s: float = 30.0) -> np.ndarray | None:
+    reader = _readers.get(key)
     if reader is None:
-        reader = _readers[youtube_id] = LiveReader(youtube_id)
+        reader = _readers[key] = LiveReader(key, resolve)
         reader.start()
     deadline = time.time() + wait_s
     while True:
@@ -104,8 +110,39 @@ def grab_thumbnail(youtube_id: str) -> np.ndarray | None:
     return cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
 
 
-def grab_frame(youtube_id: str) -> tuple[np.ndarray | None, str]:
-    frame = grab_hls(youtube_id)
-    if frame is not None:
-        return frame, "hls"
-    return grab_thumbnail(youtube_id), "thumbnail"
+def grab_snapshot(url: str) -> np.ndarray | None:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("camera snapshot URL must be HTTPS without embedded credentials")
+    with requests.get(url, headers={"Cache-Control": "no-cache"}, timeout=15, stream=True) as response:
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "").split(";")[0].lower()
+        if content_type not in ("image/jpeg", "image/png", "image/webp"):
+            raise ValueError(f"camera returned unexpected content type: {content_type}")
+        chunks = []
+        size = 0
+        for chunk in response.iter_content(chunk_size=64 * 1024):
+            size += len(chunk)
+            if size > MAX_SNAPSHOT_BYTES:
+                raise ValueError("camera snapshot is too large")
+            chunks.append(chunk)
+    return cv2.imdecode(np.frombuffer(b"".join(chunks), np.uint8), cv2.IMREAD_COLOR)
+
+
+def grab_frame(camera: dict) -> tuple[np.ndarray | None, str]:
+    kind = camera.get("sourceType") or "youtube"
+    if kind == "jpeg":
+        return grab_snapshot(camera["sourceUrl"]), "snapshot"
+    if kind == "hls":
+        url = camera["sourceUrl"]
+        if urlparse(url).scheme != "https":
+            raise ValueError("camera HLS URL must be HTTPS")
+        key = hashlib.sha256(url.encode()).hexdigest()[:16]
+        return grab_hls(f"hls:{camera['camId']}:{key}", lambda: url), "hls"
+    if kind == "youtube":
+        youtube_id = camera["youtubeId"]
+        frame = grab_hls(f"youtube:{youtube_id}", lambda: resolve_hls(youtube_id))
+        if frame is not None:
+            return frame, "youtube hls"
+        return grab_thumbnail(youtube_id), "youtube thumbnail"
+    raise ValueError(f"unsupported camera source: {kind}")

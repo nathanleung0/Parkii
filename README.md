@@ -1,6 +1,6 @@
 # ParkSight
 
-**Live street-parking availability from public cameras.** ParkSight watches public neighborhood cameras, detects parked cars with computer vision, and shows drivers which curb spots are open *right now*. It then holds a spot for them and routes them there. You can ask for a spot by voice.
+**Camera-observed street-parking availability.** ParkSight processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps ParkSight from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
 
 Proof of concept: **Castro Street, San Francisco**, using the public [Castro Street Cams](https://sfbaytimes.com/castro-street-cam/) (SF Bay Times, YouTube Live).
 
@@ -12,11 +12,11 @@ YouTube Live (HLS) ──► Python worker ──► Convex ──► React app 
 
 ## How it works
 
-1. **Frames:** `worker/sources.py` resolves each camera's YouTube Live HLS stream with `yt-dlp` and keeps it open in a background thread, so it always has the newest 720p frame. The fallback is the YouTube live thumbnail.
-2. **Detection:** `worker/poll.py` runs YOLO11s (cars, trucks, buses, motorcycles) on each frame every ~5 s. It POSTs the normalized vehicle boxes and a downscaled JPEG to Convex `/ingest`.
-3. **Occupancy (in Convex):** `convex/ingest.ts` takes each vehicle's **ground footprint** (bottom 35% of its box) and checks how much falls inside each stall polygon (≥ 40% means occupied). Majority vote over the last 3 readings gives the status and a confidence score.
+1. **Frames:** `worker/sources.py` reads configured YouTube Live, direct HLS, or HTTPS image feeds. Castro uses YouTube HLS via `yt-dlp`, with its live thumbnail as a fallback. New feeds are imported through an operator-only registry and require manual stall calibration.
+2. **Detection:** `worker/poll.py` runs YOLO11s (cars, trucks, buses, motorcycles) on each frame on a configurable cycle. It POSTs vehicle boxes to Convex `/ingest`; a downscaled preview JPEG is uploaded once per minute by default.
+3. **Occupancy (in Convex):** `convex/ingest.ts` takes each vehicle's **ground footprint** (bottom 35% of its box) and checks how much falls inside each stall polygon (≥ 40% means occupied). Majority vote over the last 3 readings gives the status and a vote-agreement score, which is not a calibrated probability of availability.
    - Why footprints: on an oblique camera, cars driving in the next lane overlap the curb stalls in image space. Tuned on Cam 1, parked cars score 0.6–0.8 and passing traffic scores 0–0.1. Whole-box overlap scored passing traffic at 0.24–0.38, causing false "taken" readings.
-4. **Real-time state:** Convex pushes stall changes to every open client. `findSpot` picks the nearest fresh, open stall that isn't held by another driver, and holds it for 3 minutes, all in one transaction. So two drivers never get sent to the same spot.
+4. **Real-time state:** Convex pushes stall changes to nearby clients. `findSpot` considers camera-observed stalls within 600 m of the selected location and picks the nearest fresh, open stall that isn't held by another ParkSight user. A search outside camera coverage reports that no live data is available there.
 5. **Voice:** `convex/assistant.ts`
    - `transcribe`: the browser records with `MediaRecorder` and Cartesia `ink-whisper` turns it into text (ported from Vortex's `CartesiaVoice`: same endpoint, size/format checks, no provider error text echoed to the user).
    - `ask`: Claude (`claude-opus-5-5`, structured output) reads the request, e.g. "near the theater", and the live candidate list. It picks a stall and writes a one-sentence reply that mentions how fresh the data is. Without `ANTHROPIC_API_KEY` it falls back to the nearest spot.
@@ -33,6 +33,7 @@ npm install
 npx convex dev                     # terminal 1 (local backend; or `npx convex login` for cloud)
 npx convex env set INGEST_SECRET <same value as INGEST_SECRET in .env.local>
 npx convex env set AGENT_SECRET <any random string; same value goes in agents/.env>
+npx convex env set CALIBRATION_SECRET <operator-only key entered in #/calibrate>
 npx convex run seed:castro         # once: cameras + starter stalls
 
 python -m venv worker/.venv
@@ -49,7 +50,9 @@ npx convex env set CARTESIA_API_KEY sk_car_...
 npx convex env set CARTESIA_VOICE_ID <voice id>   # optional
 ```
 
-Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), `--record DIR` / `--replay DIR` (record live frames, replay them later, e.g. for a demo at night), `--only castro-cam1`, `--interval 5`.
+Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), `--record DIR` / `--replay DIR` (record live frames, replay them later), `--only castro-cam1`, `--interval 5`, `--preview-interval 60`, and `--shard-count N --shard-index I` for multiple worker processes.
+
+To add cameras in other SF neighborhoods, follow [the coverage guide](docs/COVERAGE.md). The code accepts multiple feed types, but the checked-in seed still contains only the Castro proof of concept. A new feed only becomes searchable after its legal stalls have been calibrated and the feed is enabled.
 
 `yt-dlp` needs a JavaScript runtime for YouTube; it uses Node, which `sources.py` finds automatically.
 
@@ -71,9 +74,9 @@ Worker flags: `--once`, `--debug` (writes annotated frames to `worker/debug/`), 
 
 ## Known limitations (be upfront with judges)
 
-- Coverage is limited to the stalls each camera can see: about 4 on Cam 1, plus rough starter stalls on Cams 2 and 5 that **need calibrating** in the UI. Stall lat/lng values are approximate.
+- Coverage is limited to the stalls each camera can see: about 4 on Cam 1, plus rough starter stalls on Cams 2 and 5 that **need calibrating** in the UI. Stall lat/lng values are approximate. No citywide curb-facing footage source is configured.
 - YouTube live adds ~10–20 s of delay. Night frames are darker but Cam 1 still detects well.
-- Frames come from public YouTube streams. Fine for a hackathon proof of concept, but a real deployment would need a data agreement with the camera owner or a city DOT feed.
+- Castro frames come from public YouTube streams. A production deployment needs direct feed rights from the operator or another authorized source.
 - Detection can't tell legal from illegal spots (hydrants, driveways, loading zones, time limits). Calibrate only legal stalls.
 
 ## Ideas for the team

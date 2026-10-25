@@ -127,7 +127,7 @@ export function VoiceAsk({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={recording ? "Listening… tap the mic to send" : 'Try "parking near the Castro Theatre"'}
+          placeholder={recording ? "Listening… tap the mic to send" : 'Try "parking near this pin"'}
         />
         <button type="submit" className="ghost" disabled={busy || recording}>{busy ? "…" : "Ask"}</button>
       </form>

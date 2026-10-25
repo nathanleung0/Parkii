@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
+import { CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { api } from "../convex/_generated/api";
 import { CameraFrame } from "./CameraFrame";
@@ -23,15 +23,29 @@ function ClickToMove({ onMove }: { onMove: (p: [number, number]) => void }) {
   return null;
 }
 
+function RecenterOnLocation({ point }: { point: [number, number] }) {
+  const map = useMap();
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    map.flyTo(point, Math.max(16, map.getZoom()));
+  }, [map, point[0], point[1]]);
+  return null;
+}
+
 export function DriverView() {
-  const cameras = useQuery(api.parking.listCameras) ?? [];
-  const stalls = useQuery(api.parking.listStalls) ?? [];
+  const [you, setYou] = useState<[number, number]>([37.76255, -122.4351]); // Castro & Market
+  const session = useMemo(sessionId, []);
+  const cameras = useQuery(api.parking.listCamerasNear, { lat: you[0], lng: you[1] }) ?? [];
+  const stalls = useQuery(api.parking.listStallsNear, { lat: you[0], lng: you[1], sessionId: session }) ?? [];
+  const coverage = useQuery(api.parking.coverage, { lat: you[0], lng: you[1] });
   const findSpot = useMutation(api.parking.findSpot);
   const releaseHold = useMutation(api.parking.releaseHold);
   const now = useNow();
-  const session = useMemo(sessionId, []);
 
-  const [you, setYou] = useState<[number, number]>([37.76255, -122.4351]); // Castro & Market
   const [selectedCam, setSelectedCam] = useState<string | null>(null);
   const [spot, setSpot] = useState<Awaited<ReturnType<typeof findSpot>> | undefined>();
   const [busy, setBusy] = useState(false);
@@ -65,22 +79,29 @@ export function DriverView() {
   }
 
   function useMyLocation() {
-    navigator.geolocation?.getCurrentPosition((p) => setYou([p.coords.latitude, p.coords.longitude]));
+    navigator.geolocation?.getCurrentPosition((p) => moveLocation([p.coords.latitude, p.coords.longitude]));
   }
 
   const holdLeft = spot ? Math.max(0, Math.round((spot.expiresAt - now) / 1000)) : 0;
 
+  function moveLocation(point: [number, number]) {
+    setYou(point);
+    setSpot(undefined);
+    setSelectedCam(null);
+  }
+
   return (
     <main className="driver">
       <section className="map-wrap">
-        <MapContainer center={CASTRO_CENTER} zoom={18} maxZoom={20} className="map">
+        <MapContainer center={CASTRO_CENTER} zoom={13} maxZoom={20} className="map">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             maxNativeZoom={19}
             maxZoom={20}
           />
-          <ClickToMove onMove={setYou} />
+          <ClickToMove onMove={moveLocation} />
+          <RecenterOnLocation point={you} />
           <Marker position={you} icon={youIcon}>
             <Tooltip direction="top">You (click map to move)</Tooltip>
           </Marker>
@@ -122,16 +143,25 @@ export function DriverView() {
               }
             }}
           />
-          {spot === null && <p className="muted">No open spots with fresh data right now. Try again in a minute.</p>}
+          <p className="muted">Move around the map and click your destination, or use GPS. Search covers 600 m around the pin.</p>
+          {spot === null && (
+            <p className="muted">
+              {coverage?.observedStalls === 0
+                ? "No camera-observed parking within 600 m of this location yet."
+                : coverage?.freshStalls === 0
+                  ? "Nearby camera data is stale. Try again later."
+                  : "No nearby open spots with fresh camera data right now."}
+            </p>
+          )}
           {spot && (
             <div className="result">
               <div className="result-title">
                 Spot <b>{spot.label}</b> on {spot.camera}
               </div>
               <div className="muted">
-                {spot.distanceM} m away · seen open {spot.ageS}s ago · {Math.round(spot.confidence * 100)}% confidence
+                {spot.distanceM} m away · processed {spot.ageS}s ago · {Math.round(spot.confidence * 100)}% detection agreement
               </div>
-              <div className="hold">Held for you: {Math.floor(holdLeft / 60)}:{String(holdLeft % 60).padStart(2, "0")}</div>
+              <div className="hold">Not shown to other ParkSight users for {Math.floor(holdLeft / 60)}:{String(holdLeft % 60).padStart(2, "0")}. Street spaces can still be taken.</div>
               <div className="find-row">
                 <a
                   className="primary link"
@@ -159,8 +189,9 @@ export function DriverView() {
             <CameraFrame camera={cam} stalls={camStalls(cam._id)} now={now} session={session} highlight={spot?.stallId} />
             <div className="cam-meta">
               <span className={now - (cam.lastSeen ?? 0) < 60_000 ? "live" : "offline"}>●</span>
-              Updated {ago(cam.lastSeen, now)} · {cam.vehicles?.length ?? 0} vehicles detected
+              Processed {ago(cam.lastSeen, now)} · {cam.vehicles?.length ?? 0} vehicles detected
             </div>
+            <p className="muted">Source: {cam.sourceAttribution ?? "SF Bay Times Castro Street Cams"}</p>
             <ul className="stall-list">
               {camStalls(cam._id).map((s) => {
                 const st = displayStatus(s, now, session);
@@ -174,8 +205,7 @@ export function DriverView() {
           </div>
         )}
         <p className="fineprint">
-          Frames: public Castro Street Cams (SF Bay Times, YouTube Live). Detection: YOLO. Spots are held for 3 minutes so two
-          drivers aren't sent to the same one.
+          Camera feeds can lag behind real traffic. A ParkSight hold does not reserve a public street space.
         </p>
       </aside>
     </main>

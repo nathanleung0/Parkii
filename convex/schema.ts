@@ -7,7 +7,11 @@ export default defineSchema({
   cameras: defineTable({
     camId: v.string(),
     name: v.string(),
-    youtubeId: v.string(),
+    youtubeId: v.optional(v.string()), // existing Castro rows
+    sourceType: v.optional(v.union(v.literal("youtube"), v.literal("jpeg"), v.literal("hls"))),
+    sourceUrl: v.optional(v.string()),
+    sourceAttribution: v.optional(v.string()),
+    enabled: v.optional(v.boolean()),
     lat: v.number(),
     lng: v.number(),
     heading: v.number(), // degrees, 0 = north
@@ -27,7 +31,10 @@ export default defineSchema({
     confidence: v.number(),
     history: v.array(v.boolean()), // last N raw readings, true = occupied
     updatedAt: v.number(),
-  }).index("by_camera", ["cameraId"]),
+    cell: v.optional(v.string()), // optional until seed:migrateSpatialIndex backfills existing rows
+  })
+    .index("by_camera", ["cameraId"])
+    .index("by_cell", ["cell"]),
 
   holds: defineTable({
     stallId: v.id("stalls"),

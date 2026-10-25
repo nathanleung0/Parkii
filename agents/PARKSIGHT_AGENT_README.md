@@ -1,6 +1,6 @@
 # ParkSight Agent
 
-Finds and holds an open **street-parking spot in San Francisco's Castro** using live public cameras, then warns you
+Finds camera-observed **street-parking spots in covered areas of San Francisco**, then warns you
 about street cleaning and parking rules.
 
 ## What to ask
@@ -11,8 +11,8 @@ about street cleaning and parking rules.
 
 ## What you get back
 
-- The spot, held for you for **3 minutes** so no other driver is sent there
-- How many seconds ago a camera saw it open, and a confidence score
+- The spot, hidden from other ParkSight users for **3 minutes** (the street space is not physically reserved)
+- How recently its frame was processed, and the detection vote agreement
 - The next **street-cleaning** window for that block (DataSF) and a relevant SFMTA rule excerpt when available
 - A link to the latest camera frame and turn-by-turn directions
 

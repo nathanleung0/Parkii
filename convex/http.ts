@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 
 const http = httpRouter();
 
-// Worker posts: { camId, ts, vehicles: [[x1,y1,x2,y2,conf]...], frame: base64 JPEG }
+// Worker posts detections every poll; a preview JPEG is optional and sent less often.
 http.route({
   path: "/ingest",
   method: "POST",
@@ -14,13 +14,21 @@ http.route({
       return new Response("unauthorized", { status: 401 });
     }
     const body = await req.json();
-    const bytes = Uint8Array.from(atob(body.frame), (c) => c.charCodeAt(0));
-    const frame = await ctx.storage.store(new Blob([bytes], { type: "image/jpeg" }));
+    if (
+      !body || typeof body.camId !== "string" || !Number.isFinite(body.ts) ||
+      !Array.isArray(body.vehicles) ||
+      (body.frame !== undefined && typeof body.frame !== "string")
+    ) {
+      return new Response("bad request", { status: 400 });
+    }
+    const frame = body.frame
+      ? await ctx.storage.store(new Blob([Uint8Array.from(atob(body.frame), (c) => c.charCodeAt(0))], { type: "image/jpeg" }))
+      : undefined;
     const result = await ctx.runMutation(internal.ingest.apply, {
       camId: body.camId,
       frame,
       vehicles: body.vehicles,
-      ts: body.ts ?? Date.now(),
+      ts: body.ts,
     });
     return Response.json(result);
   }),
@@ -66,7 +74,11 @@ http.route({
 http.route({
   path: "/cameras",
   method: "GET",
-  handler: httpAction(async (ctx) => {
+  handler: httpAction(async (ctx, req) => {
+    const secret = process.env.INGEST_SECRET;
+    if (!secret || req.headers.get("x-ingest-secret") !== secret) {
+      return new Response("unauthorized", { status: 401 });
+    }
     const cams = await ctx.runQuery(internal.parking.workerCameras, {});
     return Response.json(cams);
   }),
