@@ -129,6 +129,41 @@ export const stallFrameUrl = internalQuery({
   },
 });
 
+// The voice agent's "screenshot": a camera's latest frame plus what we think each stall is.
+// `camera` matches a camera name or camId, case-insensitively, partial match allowed ("cam 1").
+export const cameraSnapshot = internalQuery({
+  args: { camera: v.string() },
+  handler: async (ctx, { camera }) => {
+    const q = camera.trim().toLowerCase();
+    const cams = await ctx.db.query("cameras").collect();
+    const cam =
+      cams.find((c) => c.name.toLowerCase() === q || c.camId.toLowerCase() === q || c._id === camera) ??
+      cams.find((c) => c.name.toLowerCase().includes(q) || c.camId.toLowerCase().includes(q));
+    if (!cam) return { cameras: cams.map((c) => c.name), found: null };
+    const now = Date.now();
+    const stalls = await ctx.db
+      .query("stalls")
+      .withIndex("by_camera", (q) => q.eq("cameraId", cam._id))
+      .collect();
+    return {
+      cameras: cams.map((c) => c.name),
+      found: {
+        cameraId: cam._id,
+        name: cam.name,
+        frame: cam.lastFrame ?? null,
+        ageS: cam.lastSeen ? Math.round((now - cam.lastSeen) / 1000) : null,
+        vehicles: cam.vehicles?.length ?? 0,
+        stalls: stalls.map((s) => ({
+          label: s.label,
+          status: s.status,
+          confidence: s.confidence,
+          ageS: Math.round((now - s.updatedAt) / 1000),
+        })),
+      },
+    };
+  },
+});
+
 export const holdStall = internalMutation({
   args: { stallId: v.id("stalls"), lat: v.number(), lng: v.number(), sessionId: v.string() },
   handler: async (ctx, { stallId, lat, lng, sessionId }) => {

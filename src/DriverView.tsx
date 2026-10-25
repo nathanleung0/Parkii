@@ -35,6 +35,7 @@ export function DriverView() {
   const [selectedCam, setSelectedCam] = useState<string | null>(null);
   const [spot, setSpot] = useState<Awaited<ReturnType<typeof findSpot>> | undefined>();
   const [busy, setBusy] = useState(false);
+  const [navPulse, setNavPulse] = useState(false);
 
   const counts = useMemo(() => {
     const c = { open: 0, taken: 0, held: 0, stale: 0 };
@@ -114,11 +115,21 @@ export function DriverView() {
             lat={you[0]}
             lng={you[1]}
             sessionId={session}
+            selectedCamera={cam?.name}
             onResult={(r) => {
-              setSpot(r.spot);
+              if (r.spotChanged) setSpot(r.spot);
               if (r.spot) {
                 const st = stalls.find((s) => s._id === r.spot!.stallId);
                 if (st) setSelectedCam(st.cameraId);
+              }
+              // Apply the agent's UI actions in order (after the spot, so show_camera wins).
+              for (const a of r.actions) {
+                if (a.kind === "show_camera") setSelectedCam(a.cameraId);
+                else if (a.kind === "set_location") setYou([a.lat, a.lng]);
+                else if (a.kind === "navigate" && r.spot) {
+                  const win = window.open(mapsLink(r.spot), "_blank", "noreferrer");
+                  if (!win) setNavPulse(true); // popup blocked: point at the Navigate button instead
+                }
               }
             }}
           />
@@ -134,10 +145,11 @@ export function DriverView() {
               <div className="hold">Held for you: {Math.floor(holdLeft / 60)}:{String(holdLeft % 60).padStart(2, "0")}</div>
               <div className="find-row">
                 <a
-                  className="primary link"
+                  className={navPulse ? "primary link pulse" : "primary link"}
                   target="_blank"
                   rel="noreferrer"
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}&travelmode=driving`}
+                  href={mapsLink(spot)}
+                  onClick={() => setNavPulse(false)}
                 >
                   Navigate ↗
                 </a>
@@ -180,6 +192,10 @@ export function DriverView() {
       </aside>
     </main>
   );
+}
+
+function mapsLink(p: { lat: number; lng: number }) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`;
 }
 
 function StallDot({ s, now, session, active, onClick }: { s: Stall; now: number; session: string; active: boolean; onClick: () => void }) {

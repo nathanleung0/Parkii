@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as agent from "../agent.js";
 import type * as assistant from "../assistant.js";
 import type * as geometry from "../geometry.js";
 import type * as http from "../http.js";
@@ -22,6 +23,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agent: typeof agent;
   assistant: typeof assistant;
   geometry: typeof geometry;
   http: typeof http;
