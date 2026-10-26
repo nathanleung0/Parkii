@@ -5,15 +5,15 @@
 
 **Camera-observed street-parking availability.** Parkii processes configured neighborhood cameras, detects parked cars with computer vision, and shows drivers which monitored curb spots appear open. Its app-level hold keeps Parkii from sending another user to the same spot; it cannot reserve a public street space. You can ask for a spot by voice.
 
-The app opens on the **New York City search map** (`#/`). It shows nearby NYC DOT traffic views and checks whether any independently calibrated parking spaces have recent observations. The checked-in NYC camera catalog has no parking stalls, so it does not yet produce NYC spot recommendations. The **San Francisco parking pilot** at `#/sf` has the Castro Street spaces from [Castro Street Cams](https://sfbaytimes.com/castro-street-cam/) (SF Bay Times, YouTube Live) plus public Caltrans highway snapshots across SF. Traffic views in either city are not parking availability observations.
+The app opens on the **New York City search map** (`#/`). It shows nearby NYC DOT traffic views and checks whether any independently calibrated parking spaces have recent observations. The NYC catalog's traffic views have no verified parking stalls, so they do not produce NYC spot recommendations. The **San Francisco parking pilot** at `#/sf` has the Castro Street spaces from [Castro Street Cams](https://sfbaytimes.com/castro-street-cam/) (SF Bay Times, YouTube Live) plus public Caltrans highway snapshots across SF. Traffic views in either city are not parking availability observations.
 
 ```
 YouTube Live (HLS) ──► Python worker ──► Convex ──► React app (map + live frames)
-   3 Castro cams        YOLO vehicle      /ingest     Find-a-spot, 3-min holds,
+   5 Castro cams        YOLO vehicle      /ingest     Find-a-spot, 3-min holds,
                         detection         occupancy   voice (Claude + Cartesia)
 ```
 
-The NYC page refreshes camera metadata twice daily, stores it as one catalog document, and displays the eight closest online cameras. Only recently selected views enter a bounded analysis queue (at most four); a separate NYC worker fetches a selected image about every 30 seconds and returns that same frame with dashed, tentative vehicle labels. The parking worker never polls the NYC traffic catalog. See [NYC demo setup](docs/NYC_DEMO.md).
+The NYC page refreshes camera metadata twice daily, stores it as one catalog document, and displays the eight closest online cameras. Only recently selected catalog views enter a bounded analysis queue (at most four); a separate NYC worker fetches a selected image about every 30 seconds and returns that same frame with dashed, tentative vehicle labels. The catalog is separate from the operator-managed camera registry, which can also contain NYC feeds for parking calibration. See [NYC demo setup](docs/NYC_DEMO.md).
 
 ## How it works
 
@@ -49,7 +49,7 @@ npm install
 npx convex dev                     # terminal 1 (local backend; or `npx convex login` for cloud)
 npx convex env set INGEST_SECRET <same value as INGEST_SECRET in .env.local>
 npx convex env set AGENT_SECRET <any random string; same value goes in agents/.env>
-npx convex env set CALIBRATION_SECRET <operator-only key entered in #/calibrate>
+npx convex env set CALIBRATION_SECRET <operator-only key for NYC candidate review at #/calibrate>
 npx convex run seed:castro         # once: cameras + starter stalls
 npx convex run sfCameras:refreshCatalog  # once: load public SF traffic views; then every 6 hours
 

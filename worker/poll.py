@@ -30,6 +30,8 @@ ROOT = pathlib.Path(__file__).resolve().parent
 VEHICLE_CLASSES = [2, 3, 5, 7]  # COCO: car, motorcycle, bus, truck
 VEHICLE_LABELS = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
 UPLOAD_WIDTH = 960
+# NYC DOT conditions for jpeg snapshot cameras: at most one fetch per camera per 5 s.
+MIN_SNAPSHOT_INTERVAL_S = 5.0
 
 
 def load_env() -> dict:
@@ -46,14 +48,19 @@ def load_env() -> dict:
 
 
 class Worker:
-    def __init__(self, args):
+    def __init__(self, args, *, grab=grab_frame, post=requests.post, model=None, clock=time.monotonic):
+        # grab/post/model/clock are injectable so tests can run without network, camera or YOLO weights.
         env = load_env()
         self.site = env.get("CONVEX_SITE_URL") or env["VITE_CONVEX_SITE_URL"]
         self.secret = env.get("INGEST_SECRET", "")
         self.args = args
-        self.model = YOLO(args.model)
+        self.grab = grab
+        self.post = post
+        self.clock = clock
+        self.model = model if model is not None else YOLO(args.model)
         self.last_hash: dict[str, int] = {}
         self.last_preview: dict[str, float] = {}
+        self.last_fetch: dict[str, float] = {}
         self.camera_cache: tuple[float, list[dict]] = (0, [])
         self.replay_iters: dict[str, itertools.cycle] = {}
 
@@ -76,7 +83,7 @@ class Worker:
                     return None, "replay"
                 self.replay_iters[cam["camId"]] = itertools.cycle(files)
             return cv2.imread(str(next(self.replay_iters[cam["camId"]]))), "replay"
-        return grab_frame(cam)
+        return self.grab(cam)
 
     def detect(self, frame: np.ndarray) -> list[list[float]]:
         h, w = frame.shape[:2]
@@ -96,14 +103,15 @@ class Worker:
             "ts": int(time.time() * 1000),
             "vehicles": vehicles,
         }
-        if include_preview:
+        # storeFrames=False cameras never upload a frame; the frame stays in memory for detection only.
+        if include_preview and cam.get("storeFrames") is not False:
             h, w = frame.shape[:2]
             small = cv2.resize(frame, (UPLOAD_WIDTH, round(h * UPLOAD_WIDTH / w)))
             ok, jpg = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 75])
             if not ok:
                 raise RuntimeError("could not encode camera preview")
             body["frame"] = base64.b64encode(jpg.tobytes()).decode()
-        r = requests.post(
+        r = self.post(
             f"{self.site}/ingest", json=body, headers={"x-ingest-secret": self.secret}, timeout=20
         )
         r.raise_for_status()
@@ -131,24 +139,33 @@ class Worker:
 
     def step(self, cam: dict):
         t0 = time.time()
+        cam_id = cam["camId"]
+        keep_frames = cam.get("storeFrames") is not False
+        now = self.clock()
+        last = self.last_fetch.get(cam_id)
+        if cam.get("sourceType") == "jpeg" and not keep_frames and last is not None and now - last < MIN_SNAPSHOT_INTERVAL_S:
+            print(f"[{cam_id}] skipped: fetched {now - last:.1f}s ago (minimum {MIN_SNAPSHOT_INTERVAL_S:.0f}s)")
+            return
+        self.last_fetch[cam_id] = now
         frame, src = self.next_frame(cam)
         if frame is None:
-            print(f"[{cam['camId']}] no frame ({src})")
+            print(f"[{cam_id}] no frame ({src})")
             return
         digest = int.from_bytes(hashlib.blake2b(frame[::16, ::16].tobytes(), digest_size=8).digest(), "big")
-        if self.last_hash.get(cam["camId"]) == digest and not self.args.replay:
-            print(f"[{cam['camId']}] frame unchanged, skipping")
+        if self.last_hash.get(cam_id) == digest and not self.args.replay:
+            print(f"[{cam_id}] frame unchanged, skipping")
             return
-        self.last_hash[cam["camId"]] = digest
+        self.last_hash[cam_id] = digest
         vehicles = self.detect(frame)
-        if self.args.record:
+        # storeFrames=False: no recordings or debug images, so nothing is written to disk.
+        if keep_frames and self.args.record:
             self.record(cam, frame)
-        if self.args.debug:
+        if keep_frames and self.args.debug:
             self.debug_image(cam, frame, vehicles)
-        preview = time.time() - self.last_preview.get(cam["camId"], 0) >= self.args.preview_interval
+        preview = keep_frames and time.time() - self.last_preview.get(cam_id, 0) >= self.args.preview_interval
         result = {} if self.args.dry_run else self.push(cam, frame, vehicles, preview)
         if preview and not self.args.dry_run:
-            self.last_preview[cam["camId"]] = time.time()
+            self.last_preview[cam_id] = time.time()
         print(f"[{cam['camId']}] {src} {len(vehicles)} vehicles, {result} in {time.time() - t0:.1f}s")
 
     def run(self):

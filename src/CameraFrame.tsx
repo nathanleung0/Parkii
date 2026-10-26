@@ -28,7 +28,7 @@ export function CameraFrame({
   children?: ReactNode;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const previewOnly = useLivePreview && camera.previewUrl &&
+  const previewOnly = camera.storeFrames !== false && useLivePreview && camera.previewUrl &&
     (!camera.frameUrl || now - (camera.lastSeen ?? 0) >= STALE_MS);
   const imageUrl = previewOnly
     ? `${camera.previewUrl}?t=${Math.floor(now / 60_000)}`
@@ -41,7 +41,9 @@ export function CameraFrame({
   };
   return (
     <div className="frame">
-      {imageUrl && !imageFailed ? (
+      {camera.storeFrames === false ? (
+        <div className="frame-empty">Picture not shown for this city camera (operator terms). Outlines show live spaces.</div>
+      ) : imageUrl && !imageFailed ? (
         <img src={imageUrl} alt={camera.name} onError={() => setImageFailed(true)} />
       ) : (
         <div className="frame-empty">Camera preview unavailable</div>

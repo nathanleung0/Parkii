@@ -16,6 +16,7 @@ export const upsert = internalMutation({
     sourceUrl: v.optional(v.string()),
     sourceAttribution: v.string(),
     enabled: v.boolean(),
+    storeFrames: v.optional(v.boolean()),
   },
   handler: async (ctx, camera) => {
     if (!camera.camId.trim() || !camera.name.trim() || !camera.sourceAttribution.trim()) {

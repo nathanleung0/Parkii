@@ -81,6 +81,10 @@ main.driver { display: grid; grid-template-columns: 420px minmax(0, 1fr); grid-t
 .location-button { flex: none; width: 41px; height: 41px; min-height: 0; padding: 0; border: 0; background: #f1f1f1; font-size: 23px; }
 .search-button { justify-content: space-between; width: 100%; min-height: 52px; margin-top: 13px; padding: 0 17px; border-radius: 8px; font-size: 15px; }
 .search-button span:last-child { font-size: 21px; font-weight: 400; }
+.rules-card { margin-top: 12px; padding: 12px 14px; border-radius: 9px; background: #f5f5f5; font-size: 14px; }
+.rules-card p { margin: 6px 0 0; }
+.rules-card.now { background: #fee2e2; }
+.rules-card.soon { background: #fef3c7; }
 .coverage-banner { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; padding: 13px 14px; border-radius: 9px; background: #f5f5f5; }
 .coverage-dot { flex: none; width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; background: #999; }
 .coverage-banner.fresh .coverage-dot { background: #0e9250; }

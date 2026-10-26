@@ -9,16 +9,11 @@ import {
 } from "./_generated/server";
 import { distanceMeters } from "./geometry";
 import { selectCameraViews } from "./cameraSelection";
-import { cellFor, cellsAround, MAP_RADIUS_M, SEARCH_RADIUS_M, withinRadius } from "./geo";
+import { cellFor, cellsAround, inSfOrNyc, MAP_RADIUS_M, SEARCH_RADIUS_M, withinRadius } from "./geo";
 import type { Doc } from "./_generated/dataModel";
 
 const HOLD_MS = 3 * 60 * 1000;
 const FRESH_MS = 90 * 1000;
-
-function requireCalibrationSecret(provided: string) {
-  const expected = process.env.CALIBRATION_SECRET;
-  if (!expected || provided !== expected) throw new Error("Calibration access denied");
-}
 
 async function publicCamera(ctx: QueryCtx, camera: Doc<"cameras">) {
   return {
@@ -31,8 +26,9 @@ async function publicCamera(ctx: QueryCtx, camera: Doc<"cameras">) {
     lastSeen: camera.lastSeen,
     vehicles: camera.vehicles,
     sourceAttribution: camera.sourceAttribution,
-    frameUrl: camera.lastFrame ? await ctx.storage.getUrl(camera.lastFrame) : null,
-    previewUrl: camera.youtubeId && /^[A-Za-z0-9_-]{11}$/.test(camera.youtubeId)
+    storeFrames: camera.storeFrames !== false,
+    frameUrl: camera.storeFrames !== false && camera.lastFrame ? await ctx.storage.getUrl(camera.lastFrame) : null,
+    previewUrl: camera.storeFrames !== false && camera.youtubeId && /^[A-Za-z0-9_-]{11}$/.test(camera.youtubeId)
       ? `https://i.ytimg.com/vi/${camera.youtubeId}/maxresdefault_live.jpg`
       : null,
   };
@@ -46,7 +42,8 @@ export const listCameras = query({
   },
 });
 
-async function nearbyStalls(ctx: QueryCtx, lat: number, lng: number, radiusM: number): Promise<Doc<"stalls">[]> {
+// Unplaced stalls (placed === false) are excluded unless asked for: they must not appear in search or coverage.
+async function nearbyStalls(ctx: QueryCtx, lat: number, lng: number, radiusM: number, includeUnplaced = false): Promise<Doc<"stalls">[]> {
   const batches = await Promise.all(
     cellsAround(lat, lng, radiusM).map((cell) =>
       ctx.db.query("stalls").withIndex("by_cell", (q) => q.eq("cell", cell)).collect(),
@@ -54,11 +51,13 @@ async function nearbyStalls(ctx: QueryCtx, lat: number, lng: number, radiusM: nu
   );
   // Existing deployments can serve searches while the one-time backfill runs.
   const legacy = await ctx.db.query("stalls").withIndex("by_cell", (q) => q.eq("cell", undefined)).collect();
-  return [...batches.flat(), ...legacy].filter((s) => withinRadius(lat, lng, s.lat, s.lng, radiusM));
+  return [...batches.flat(), ...legacy]
+    .filter((s) => includeUnplaced || s.placed !== false)
+    .filter((s) => withinRadius(lat, lng, s.lat, s.lng, radiusM));
 }
 
-async function activeNearbyStalls(ctx: QueryCtx, lat: number, lng: number, radiusM: number) {
-  const stalls = await nearbyStalls(ctx, lat, lng, radiusM);
+async function activeNearbyStalls(ctx: QueryCtx, lat: number, lng: number, radiusM: number, includeUnplaced = false) {
+  const stalls = await nearbyStalls(ctx, lat, lng, radiusM, includeUnplaced);
   const cameraIds = [...new Set(stalls.map((s) => s.cameraId))];
   const cameras = new Map(
     (await Promise.all(cameraIds.map((id) => ctx.db.get(id))))
@@ -93,6 +92,7 @@ export const workerCameras = internalQuery({
         youtubeId: c.youtubeId,
         sourceType: c.sourceType ?? "youtube",
         sourceUrl: c.sourceUrl,
+        storeFrames: c.storeFrames !== false,
         stalls: (
           await ctx.db
             .query("stalls")
@@ -125,7 +125,8 @@ export const listStalls = query({
 export const listStallsNear = query({
   args: { lat: v.number(), lng: v.number(), sessionId: v.string() },
   handler: async (ctx, { lat, lng, sessionId }) => {
-    const pairs = await activeNearbyStalls(ctx, lat, lng, MAP_RADIUS_M);
+    // Includes unplaced stalls so the camera view can still outline them; the map only plots pinned ones.
+    const pairs = await activeNearbyStalls(ctx, lat, lng, MAP_RADIUS_M, true);
     return Promise.all(pairs.map(async ({ stall }) => {
       const holds = await ctx.db.query("holds").withIndex("by_stall", (q) => q.eq("stallId", stall._id)).collect();
       return {
@@ -218,7 +219,7 @@ export const stallFrameUrl = internalQuery({
   handler: async (ctx, { stallId }) => {
     const stall = await ctx.db.get(stallId);
     const cam = stall && (await ctx.db.get(stall.cameraId));
-    return cam?.lastFrame ? await ctx.storage.getUrl(cam.lastFrame) : null;
+    return cam && cam.storeFrames !== false && cam.lastFrame ? await ctx.storage.getUrl(cam.lastFrame) : null;
   },
 });
 
@@ -243,7 +244,7 @@ export const cameraSnapshot = internalQuery({
       found: {
         cameraId: cam._id,
         name: cam.name,
-        frame: cam.lastFrame ?? null,
+        frame: cam.storeFrames === false ? null : cam.lastFrame ?? null,
         ageS: cam.lastSeen ? Math.round((now - cam.lastSeen) / 1000) : null,
         vehicles: cam.vehicles?.length ?? 0,
         stalls: stalls.map((s) => ({
@@ -282,28 +283,28 @@ export const releaseHold = mutation({
 // Calibration
 export const upsertStall = mutation({
   args: {
-    adminSecret: v.string(),
     id: v.optional(v.id("stalls")),
     cameraId: v.id("cameras"),
     label: v.string(),
     polygon: v.array(v.array(v.number())),
     lat: v.number(),
     lng: v.number(),
+    placed: v.optional(v.boolean()), // default false: a stall is only on the map once pinned
   },
-  handler: async (ctx, { adminSecret, id, ...fields }) => {
-    requireCalibrationSecret(adminSecret);
+  handler: async (ctx, { id, placed, ...fields }) => {
     if (!fields.label.trim() || fields.polygon.length !== 4 ||
         fields.polygon.some((point) => point.length !== 2 || point.some((coordinate) => !Number.isFinite(coordinate) || coordinate < 0 || coordinate > 1)) ||
-        fields.lat < 37.6 || fields.lat > 37.84 || fields.lng < -122.53 || fields.lng > -122.34) {
+        !inSfOrNyc(fields.lat, fields.lng)) {
       throw new Error("Invalid stall location or polygon");
     }
     const cell = cellFor(fields.lat, fields.lng);
     if (id) {
-      await ctx.db.patch(id, { ...fields, cell, history: [], status: "unknown", updatedAt: 0, confidence: 0 });
+      await ctx.db.patch(id, { ...fields, placed: placed === true, cell, history: [], status: "unknown", updatedAt: 0, confidence: 0 });
       return id;
     }
     return ctx.db.insert("stalls", {
       ...fields,
+      placed: placed === true,
       status: "unknown",
       confidence: 0,
       history: [],
@@ -314,9 +315,8 @@ export const upsertStall = mutation({
 });
 
 export const deleteStall = mutation({
-  args: { id: v.id("stalls"), adminSecret: v.string() },
-  handler: async (ctx, { id, adminSecret }) => {
-    requireCalibrationSecret(adminSecret);
+  args: { id: v.id("stalls") },
+  handler: async (ctx, { id }) => {
     const holds = await ctx.db
       .query("holds")
       .withIndex("by_stall", (q) => q.eq("stallId", id))
